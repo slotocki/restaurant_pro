@@ -1,0 +1,15 @@
+﻿# Rider / IntelliJ
+.idea/
+*.iml
+
+# Visual Studio / .NET
+.vs/
+bin/
+obj/
+
+# User-specific files
+*.user
+*.suo
+
+# Logs
+*.log
