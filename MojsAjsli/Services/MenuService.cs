@@ -1,17 +1,26 @@
 ﻿using MojsAjsli.Models;
 using MojsAjsli.Patterns.Decorator;
 using MojsAjsli.Patterns.Iterator;
+using MojsAjsli.Services.Implementations.Dishes;
+using MojsAjsli.Services.Implementations.Menu;
 using MojsAjsli.Services.Interfaces;
+using MojsAjsli.Services.Interfaces.Dishes;
+using MojsAjsli.Services.Interfaces.Menu;
 
 namespace MojsAjsli.Services;
+
 /// <summary>
-/// Implementacja IMenuService - DIP (Dependency Inversion Principle)
+/// Implementacja IMenuService - Fasada łącząca serwisy
 /// Singleton - zapewnia pojedynczą instancję w aplikacji
+/// DIP (Dependency Inversion Principle) - zależy od abstrakcji
 /// </summary>
 public class MenuService : IMenuService
 {
     private static MenuService? _instance;
     private static readonly object _lock = new();
+    
+    private readonly IMenuQueryService _queryService;
+    private readonly IDishFactory _dishFactory;
     private readonly MenuAggregate _menu = new();
 
     public static MenuService Instance
@@ -32,6 +41,8 @@ public class MenuService : IMenuService
     private MenuService()
     {
         InitializeMenu();
+        _queryService = new MenuQueryService(_menu);
+        _dishFactory = new DishFactory();
     }
 
     private void InitializeMenu()
@@ -62,45 +73,45 @@ public class MenuService : IMenuService
         _menu.AddItem(new MenuItem("Sok z Owoców Endoru", 12.00m, DishCategory.Drink, "Egzotyczny napój leśny", 2));
     }
 
-    public List<MenuItem> GetAllItems() => _menu.GetAllItems();
+    #region IMenuQueryService - delegacja do _queryService
 
-    public List<MenuItem> GetItemsByCategory(DishCategory category)
-    {
-        var result = new List<MenuItem>();
-        var iterator = _menu.CreateCategoryIterator(category);
-        while (iterator.HasNext())
-            result.Add(iterator.Next());
-        return result;
-    }
+    public List<MenuItem> GetAllItems() => _queryService.GetAllItems();
 
-    public List<MenuItem> GetItemsInPriceRange(decimal minPrice, decimal maxPrice)
-    {
-        var result = new List<MenuItem>();
-        var iterator = _menu.CreatePriceRangeIterator(minPrice, maxPrice);
-        while (iterator.HasNext())
-            result.Add(iterator.Next());
-        return result;
-    }
+    public List<MenuItem> GetItemsByCategory(DishCategory category) => _queryService.GetItemsByCategory(category);
 
-    public IDish CreateDish(MenuItem menuItem)
-    {
-        return new BaseDish(menuItem.Name, menuItem.Description, menuItem.BasePrice, menuItem.PreparationTimeMinutes);
-    }
+    public List<MenuItem> GetItemsInPriceRange(decimal minPrice, decimal maxPrice) => 
+        _queryService.GetItemsInPriceRange(minPrice, maxPrice);
 
-    public IDish CreateDishWithExtras(MenuItem menuItem, bool extraCheese = false, bool bacon = false, 
+    public int MenuItemsCount => _queryService.MenuItemsCount;
+
+    #endregion
+
+    #region IDishFactory - delegacja do _dishFactory
+
+    public IDish CreateDish(MenuItem menuItem) => _dishFactory.CreateDish(menuItem);
+
+    public IDish CreateDishWithExtras(MenuItem menuItem, IEnumerable<DishExtra> extras) => 
+        _dishFactory.CreateDishWithExtras(menuItem, extras);
+
+    #endregion
+
+    #region Kompatybilność wsteczna
+
+    [Obsolete("Użyj CreateDishWithExtras z IEnumerable<DishExtra> zamiast parametrów bool")]
+    public IDish CreateDishWithExtras(MenuItem menuItem, bool extraCheese = false, bool bacon = false,
         bool spicySauce = false, bool glutenFree = false, bool extraPortion = false, bool veganOption = false)
     {
-        IDish dish = CreateDish(menuItem);
+        var extras = new List<DishExtra>();
+        
+        if (extraCheese) extras.Add(DishExtra.ExtraCheese);
+        if (bacon) extras.Add(DishExtra.Bacon);
+        if (spicySauce) extras.Add(DishExtra.SpicySauce);
+        if (glutenFree) extras.Add(DishExtra.GlutenFree);
+        if (extraPortion) extras.Add(DishExtra.ExtraPortion);
+        if (veganOption) extras.Add(DishExtra.VeganOption);
 
-        if (extraCheese) dish = new ExtraCheeseDecorator(dish);
-        if (bacon) dish = new BaconDecorator(dish);
-        if (spicySauce) dish = new SpicySauceDecorator(dish);
-        if (glutenFree) dish = new GlutenFreeDecorator(dish);
-        if (extraPortion) dish = new ExtraPortionDecorator(dish);
-        if (veganOption) dish = new VeganOptionDecorator(dish);
-
-        return dish;
+        return CreateDishWithExtras(menuItem, extras);
     }
 
-    public int MenuItemsCount => _menu.Count;
+    #endregion
 }

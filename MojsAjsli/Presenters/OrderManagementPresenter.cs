@@ -4,6 +4,7 @@ using MojsAjsli.Patterns.Decorator;
 using MojsAjsli.Patterns.State;
 using MojsAjsli.Services;
 using MojsAjsli.Services.Interfaces;
+using MojsAjsli.Services.Interfaces.Dishes;
 
 namespace MojsAjsli.Presenters;
 
@@ -25,8 +26,10 @@ public class OrderManagementPresenter
         _waiterService = waiterService ?? throw new ArgumentNullException(nameof(waiterService));
     }
 
-    public (bool Success, string Message) AddItemToOrder(Order order, MenuItem menuItem, 
-        bool extraCheese, bool bacon, bool spicySauce, bool glutenFree, bool extraPortion)
+    /// <summary>
+    /// Nowa metoda z użyciem DishExtra enum - OCP (Open/Closed Principle)
+    /// </summary>
+    public (bool Success, string Message) AddItemToOrder(Order order, MenuItem menuItem, IEnumerable<DishExtra> extras)
     {
         if (order == null)
         {
@@ -35,8 +38,7 @@ public class OrderManagementPresenter
 
         try
         {
-            IDish dish = _menuService.CreateDishWithExtras(
-                menuItem, extraCheese, bacon, spicySauce, glutenFree, extraPortion);
+            IDish dish = _menuService.CreateDishWithExtras(menuItem, extras);
 
             _waiterService.AddItemToOrder(order, dish);
             
@@ -50,6 +52,24 @@ public class OrderManagementPresenter
         {
             return (false, ex.Message);
         }
+    }
+
+    /// <summary>
+    /// Metoda zachowana dla kompatybilności wstecznej
+    /// </summary>
+    [Obsolete("Użyj AddItemToOrder z IEnumerable<DishExtra> zamiast parametrów bool")]
+    public (bool Success, string Message) AddItemToOrder(Order order, MenuItem menuItem, 
+        bool extraCheese, bool bacon, bool spicySauce, bool glutenFree, bool extraPortion)
+    {
+        var extras = new List<DishExtra>();
+        
+        if (extraCheese) extras.Add(DishExtra.ExtraCheese);
+        if (bacon) extras.Add(DishExtra.Bacon);
+        if (spicySauce) extras.Add(DishExtra.SpicySauce);
+        if (glutenFree) extras.Add(DishExtra.GlutenFree);
+        if (extraPortion) extras.Add(DishExtra.ExtraPortion);
+
+        return AddItemToOrder(order, menuItem, extras);
     }
 
     public (bool Success, string Message) RemoveItemFromOrder(Order order, IDish dish)
@@ -132,4 +152,3 @@ public class OrderManagementPresenter
     public bool CanRedo(Order? order) => order != null && _waiterService.CanRedo(order);
     public Order CreateOrder(int tableNumber) => _waiterService.CreateOrder(tableNumber);
 }
-

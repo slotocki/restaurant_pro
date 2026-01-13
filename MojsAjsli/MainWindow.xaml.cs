@@ -6,202 +6,307 @@ using System.Windows.Media;
 using System.Windows.Threading;
 using MojsAjsli.Models;
 using MojsAjsli.Patterns.Decorator;
-using MojsAjsli.Patterns.Mediator;
-using MojsAjsli.Patterns.Observer;
 using MojsAjsli.Patterns.State;
 using MojsAjsli.Patterns.Strategy;
-using MojsAjsli.Services;
+using MojsAjsli.Services.Interfaces.Dishes;
+using MojsAjsli.ViewModels;
 using MenuItem = MojsAjsli.Models.MenuItem;
 
 namespace MojsAjsli;
 
-public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotification>
+/// <summary>
+/// MainWindow - odpowiedzialność ograniczona do:
+/// - Inicjalizacji UI i bindingów
+/// - Obsługi zdarzeń UI specyficznych dla WPF (kliknięcia, nawigacja)
+/// - Delegowania logiki biznesowej do ViewModeli
+/// 
+/// Logika biznesowa została wydzielona do ViewModeli zgodnie z SRP:
+/// - TableViewModel - zarządzanie stolikami
+/// - OrderViewModel - zarządzanie zamówieniami
+/// - KitchenViewModel - obsługa kuchni
+/// - PaymentViewModel - obsługa płatności
+/// - StatisticsViewModel - statystyki
+/// - SimulationViewModel - symulacja
+/// - NotificationViewModel - powiadomienia
+/// </summary>
+public partial class MainWindow : Window
 {
-    private readonly TableService _tableService;
-    private readonly MenuService _menuService;
-    private readonly KitchenService _kitchenService;
-    private readonly WaiterService _waiterService;
-    private readonly CashierService _cashierService;
-    private readonly StatisticsService _statisticsService;
-    private readonly SimulationService _simulationService;
-    private readonly RestaurantMediator _mediator;
-    private readonly RestaurantNotificationSubject _notificationSubject;
-
-    private Table? _selectedTable;
-    private Order? _currentOrder;
-    private readonly ObservableCollection<OrderItemViewModel> _currentOrderItems = new();
-    private readonly ObservableCollection<Order> _deliveredOrders = new();
-    private readonly ObservableCollection<string> _notificationLog = new();
+    private readonly MainViewModel _viewModel;
     private readonly DispatcherTimer _timer;
-    private int _selectedGuestCount = 2; // Domyślnie 2 gości
     private Border? _selectedGuestTile;
 
     public MainWindow()
     {
         InitializeComponent();
 
-        _tableService = new TableService();
-        _menuService = MenuService.Instance;
-        _kitchenService = new KitchenService();
-        _waiterService = new WaiterService("Jan");
-        _cashierService = new CashierService();
-        _statisticsService = new StatisticsService();
-        _simulationService = new SimulationService(_tableService, _menuService);
-
-        _mediator = new RestaurantMediator();
-        _mediator.Register(_kitchenService);
-        _mediator.Register(_waiterService);
-        _mediator.Register(_cashierService);
-
-        _mediator.OnNotification += Mediator_OnNotification;
-        _mediator.OnOrderReady += Mediator_OnOrderReady;
-        _mediator.OnOrderDelivered += Mediator_OnOrderDelivered;
-        _mediator.OnPaymentComplete += Mediator_OnPaymentComplete;
-
-        _notificationSubject = new RestaurantNotificationSubject();
-        _notificationSubject.Attach(this);
+        _viewModel = new MainViewModel();
+        DataContext = _viewModel;
 
         InitializeUI();
+        SubscribeToViewModelEvents();
 
         _timer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _timer.Tick += Timer_Tick;
         _timer.Start();
-
-        AddNotification("System uruchomiony. Witamy w Mojs Ajsli - Kantynie na Rubieżach Galaktyki!");
     }
+
+    #region Inicjalizacja UI
 
     private void InitializeUI()
     {
-        TablesControl.ItemsSource = _tableService.Tables;
-        MenuListBox.ItemsSource = _menuService.GetAllItems();
-        CurrentOrderListBox.ItemsSource = _currentOrderItems;
+        // Stoliki
+        TablesControl.ItemsSource = _viewModel.TableVM.Tables;
 
-        // Inicjalizacja kafelków kategorii
-        CategoryTilesControl.ItemsSource = Enum.GetValues(typeof(DishCategory)).Cast<DishCategory>();
+        // Menu
+        MenuListBox.ItemsSource = _viewModel.MenuItems;
+        CategoryTilesControl.ItemsSource = _viewModel.MenuCategories;
 
-        KitchenQueueListBox.ItemsSource = _kitchenService.OrderQueue;
-        PreparingListBox.ItemsSource = _kitchenService.PreparingOrders;
+        // Zamówienia
+        CurrentOrderListBox.ItemsSource = _viewModel.OrderVM.CurrentOrderItems;
 
-        ReadyOrdersListBox.ItemsSource = _waiterService.ReadyOrders;
-        DeliveredOrdersListBox.ItemsSource = _deliveredOrders;
+        // Kuchnia
+        KitchenQueueListBox.ItemsSource = _viewModel.KitchenVM.OrderQueue;
+        PreparingListBox.ItemsSource = _viewModel.KitchenVM.PreparingOrders;
 
-        foreach (var strategy in _cashierService.GetAvailableStrategies())
+        // Kelner/Dostawa
+        ReadyOrdersListBox.ItemsSource = _viewModel.WaiterService.ReadyOrders;
+        DeliveredOrdersListBox.ItemsSource = _viewModel.DeliveredOrders;
+
+        // Płatności
+        foreach (var strategy in _viewModel.PaymentVM.AvailableStrategies)
             PricingStrategyComboBox.Items.Add(strategy);
         PricingStrategyComboBox.SelectedIndex = 0;
         PricingStrategyComboBox.DisplayMemberPath = "Name";
 
-        PaymentMethodComboBox.Items.Add("Gotowka");
-        PaymentMethodComboBox.Items.Add("Karta");
-        PaymentMethodComboBox.Items.Add("BLIK");
-        PaymentMethodComboBox.Items.Add("Przelew bankowy");
+        foreach (var method in _viewModel.PaymentVM.PaymentMethods)
+            PaymentMethodComboBox.Items.Add(method);
         PaymentMethodComboBox.SelectedIndex = 0;
 
-        DeliveredOrdersListBox.SelectionChanged += (s, e) => UpdatePaymentSummary();
-
-        // Inicjalizacja domyślnego wyboru kafelka gości (2)
+        // Domyślny wybór liczby gości
         _selectedGuestTile = Guest2Tile;
         Guest2Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5D4037"));
 
-        UpdateStatistics();
+        UpdateStatisticsUI();
     }
+
+    private void SubscribeToViewModelEvents()
+    {
+        // Zdarzenia płatności
+        _viewModel.PaymentVM.OnPaymentError += msg =>
+            MessageBox.Show(msg, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
+
+        _viewModel.PaymentVM.OnPaymentSuccess += (amount, method, transactionId) =>
+        {
+            UpdateStatisticsUI();
+            MessageBox.Show(
+                $"Płatność zrealizowana!\n\nKwota: {amount:N2} zł\nMetoda: {method}\nTransakcja: {transactionId}",
+                "Sukces", MessageBoxButton.OK, MessageBoxImage.Information);
+        };
+
+        _viewModel.PaymentVM.OnPaymentCompleted += UpdateStatisticsUI;
+        _viewModel.PaymentVM.OnStrategyChanged += UpdateOrderUI;
+
+        // Zdarzenia symulacji
+        _viewModel.SimulationVM.OnSimulationStarted += () =>
+        {
+            RunSimulationButton.IsEnabled = false;
+            StopSimulationButton.IsEnabled = true;
+            SwitchToSimulationDataSources();
+            StartSimulationUpdateTimer();
+        };
+
+        _viewModel.SimulationVM.OnSimulationStopped += () =>
+        {
+            RunSimulationButton.IsEnabled = true;
+            StopSimulationButton.IsEnabled = false;
+            RestoreOriginalDataSources();
+            UpdateStatisticsUI();
+        };
+
+        _viewModel.SimulationVM.OnParamsApplied += () =>
+            MessageBox.Show(
+                $"Parametry symulacji zostały zaktualizowane!\n\n" +
+                $"Interwał klientów: {_viewModel.SimulationVM.MinArrivalInterval}-{_viewModel.SimulationVM.MaxArrivalInterval} min\n" +
+                $"Rozmiar grup: {_viewModel.SimulationVM.MinGroupSize}-{_viewModel.SimulationVM.MaxGroupSize} osób\n" +
+                $"Czas oczekiwania: {_viewModel.SimulationVM.MinWaitTime}-{_viewModel.SimulationVM.MaxWaitTime} min\n" +
+                $"Równoległe zamówienia: {_viewModel.SimulationVM.MaxConcurrentOrders}",
+                "Parametry zapisane", MessageBoxButton.OK, MessageBoxImage.Information);
+
+        // Zdarzenia stolików
+        _viewModel.TableVM.OnTableStateChanged += UpdateStatisticsUI;
+    }
+
+    #endregion
+
+    #region Timer i aktualizacje UI
 
     private void Timer_Tick(object? sender, EventArgs e)
     {
         CurrentTimeText.Text = DateTime.Now.ToString("HH:mm:ss");
-        
+        _viewModel.UpdateTime();
+
         var now = DateTime.Now;
         ActiveStrategyText.Text = (now.Hour >= 15 && now.Hour < 18) ? "Happy Hour aktywne!" : "";
 
-        UpdateKitchenStatus();
+        UpdateKitchenStatusUI();
     }
+
+    private void UpdateStatisticsUI()
+    {
+        DailyRevenueText.Text = _viewModel.StatisticsVM.DailyRevenue;
+        TodayOrdersText.Text = _viewModel.StatisticsVM.TodayOrders;
+        AverageOrderText.Text = _viewModel.StatisticsVM.AverageOrder;
+        FreeTablesText.Text = _viewModel.StatisticsVM.FreeTables;
+        OccupiedTablesText.Text = _viewModel.StatisticsVM.OccupiedTables;
+        TotalSeatsText.Text = _viewModel.StatisticsVM.TotalSeats;
+    }
+
+    private void UpdateOrderUI()
+    {
+        TotalPriceText.Text = _viewModel.OrderVM.TotalPrice;
+        DiscountText.Text = _viewModel.OrderVM.DiscountText;
+        FinalPriceText.Text = _viewModel.OrderVM.FinalPriceText;
+        UndoButton.IsEnabled = _viewModel.OrderVM.CanUndo;
+        RedoButton.IsEnabled = _viewModel.OrderVM.CanRedo;
+    }
+
+    private void UpdateKitchenStatusUI()
+    {
+        _viewModel.KitchenVM.UpdateStatus();
+        QueueCountText.Text = _viewModel.KitchenVM.QueueCount;
+        PreparingCountText.Text = _viewModel.KitchenVM.PreparingCount;
+        KitchenQueueStatusText.Text = _viewModel.KitchenVM.QueueCount;
+        KitchenPreparingStatusText.Text = _viewModel.KitchenVM.PreparingCount;
+        EstimatedWaitText.Text = _viewModel.KitchenVM.EstimatedWaitTime;
+    }
+
+    private void UpdatePaymentSummaryUI()
+    {
+        PaymentSummaryText.Text = _viewModel.PaymentVM.PaymentSummary;
+        PaymentDiscountText.Text = _viewModel.PaymentVM.PaymentDiscount;
+    }
+
+    #endregion
+
+    #region Obsługa stolików (delegacja do TableViewModel)
 
     private void Table_Click(object sender, MouseButtonEventArgs e)
     {
-        if (sender is System.Windows.Controls.Border border && border.Tag is int tableNumber)
+        if (sender is Border border && border.Tag is int tableNumber)
         {
-            _selectedTable = _tableService.GetTable(tableNumber);
-            if (_selectedTable != null)
-            {
-                SelectedTableText.Text = "Stolik " + _selectedTable.Number + " (" + _selectedTable.Seats + " miejsc)";
-                OrderStatusText.Text = "Status: " + GetTableStatusText(_selectedTable.Status);
-
-                if (_selectedTable.Status == TableStatus.Occupied && _currentOrder == null)
-                {
-                    _currentOrder = _waiterService.CreateOrder(_selectedTable.Number);
-                    UpdateOrderUI();
-                }
-            }
+            _viewModel.TableVM.SelectTable(tableNumber);
+            SelectedTableText.Text = _viewModel.TableVM.SelectedTableInfo;
+            OrderStatusText.Text = _viewModel.TableVM.TableStatus;
+            UpdateOrderUI();
         }
     }
-
-    private string GetTableStatusText(TableStatus status) => status switch
-    {
-        TableStatus.Free => "Wolny",
-        TableStatus.Occupied => "Zajety",
-        TableStatus.Reserved => "Zarezerwowany",
-        TableStatus.NeedsCleaning => "Do sprzatania",
-        _ => "Nieznany"
-    };
 
     private void OccupyTable_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedTable == null)
+        if (_viewModel.TableVM.SelectedTable == null)
         {
             MessageBox.Show("Najpierw wybierz stolik!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        if (_tableService.SeatGuests(_selectedTable.Number, _selectedGuestCount))
-        {
-            _currentOrder = _waiterService.CreateOrder(_selectedTable.Number);
-            UpdateOrderUI();
-            AddNotification("Stolik " + _selectedTable.Number + " zajety przez " + _selectedGuestCount + " gosci");
-            UpdateStatistics();
-        }
-        else
-        {
-            MessageBox.Show("Nie mozna posadzic " + _selectedGuestCount + " gosci przy tym stoliku!", "Blad", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
+        _viewModel.TableVM.OccupyTableCommand.Execute(null);
+        UpdateOrderUI();
+        UpdateStatisticsUI();
     }
-    
+
     private void FreeTable_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedTable == null)
+        if (_viewModel.TableVM.SelectedTable == null)
         {
             MessageBox.Show("Najpierw wybierz stolik!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        _tableService.FreeTable(_selectedTable.Number);
-        _currentOrder = null;
-        _currentOrderItems.Clear();
+        _viewModel.TableVM.FreeTableCommand.Execute(null);
+        _viewModel.OrderVM.ClearOrder();
         UpdateOrderUI();
-        AddNotification("Stolik " + _selectedTable.Number + " zwolniony");
-        UpdateStatistics();
+        UpdateStatisticsUI();
     }
 
     private void CleanTable_Click(object sender, RoutedEventArgs e)
     {
-        if (_selectedTable == null)
+        if (_viewModel.TableVM.SelectedTable == null)
         {
             MessageBox.Show("Najpierw wybierz stolik!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        _tableService.CleanTable(_selectedTable.Number);
-        AddNotification("Stolik " + _selectedTable.Number + " wyczyszczony");
-        UpdateStatistics();
+        _viewModel.TableVM.CleanTableCommand.Execute(null);
+        UpdateStatisticsUI();
+    }
+
+    private void GuestCountTile_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Border border && border.Tag is int guestCount)
+        {
+            _viewModel.TableVM.SelectedGuestCount = guestCount;
+            ResetGuestTileColors();
+            border.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5D4037"));
+            _selectedGuestTile = border;
+            CustomGuestCountTextBox.Text = "";
+            _viewModel.NotificationVM.AddNotification($"Wybrano liczbę gości: {guestCount}");
+        }
+    }
+
+    private void CustomGuestCount_Changed(object sender, TextChangedEventArgs e)
+    {
+        if (!string.IsNullOrWhiteSpace(CustomGuestCountTextBox.Text))
+        {
+            if (int.TryParse(CustomGuestCountTextBox.Text, out int customCount) && customCount > 0)
+            {
+                _viewModel.TableVM.SelectedGuestCount = customCount;
+                ResetGuestTileColors();
+                _selectedGuestTile = null;
+                _viewModel.NotificationVM.AddNotification($"Wybrano niestandardową liczbę gości: {customCount}");
+            }
+        }
+        else
+        {
+            _viewModel.TableVM.SelectedGuestCount = 2;
+            ResetGuestTileColors();
+            Guest2Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5D4037"));
+            _selectedGuestTile = Guest2Tile;
+        }
+    }
+
+    private void ResetGuestTileColors()
+    {
+        var defaultColor = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
+        Guest1Tile.Background = defaultColor;
+        Guest2Tile.Background = defaultColor;
+        Guest3Tile.Background = defaultColor;
+        Guest4Tile.Background = defaultColor;
+    }
+
+    #endregion
+
+    #region Obsługa zamówień (delegacja do OrderViewModel)
+
+    private void CategoryTile_Click(object sender, MouseButtonEventArgs e)
+    {
+        if (sender is Border border && border.Tag is DishCategory category)
+        {
+            _viewModel.SelectedCategory = category;
+            var converter = new UI.Converters.CategoryToNameConverter();
+            SelectedCategoryText.Text = converter.Convert(category, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture)?.ToString();
+            MenuListBox.ItemsSource = _viewModel.MenuItems;
+        }
     }
 
     private void AddToOrder_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentOrder == null)
+        if (_viewModel.OrderVM.CurrentOrder == null)
         {
             MessageBox.Show("Najpierw zajmij stolik!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        if (MenuListBox.SelectedItem is not Models.MenuItem menuItem)
+        if (MenuListBox.SelectedItem is not MenuItem menuItem)
         {
             MessageBox.Show("Wybierz danie z menu!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
@@ -209,17 +314,14 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
 
         try
         {
-            IDish dish = _menuService.CreateDishWithExtras(
-                menuItem,
-                ExtraCheeseCheck.IsChecked == true,
-                BaconCheck.IsChecked == true,
-                SpicySauceCheck.IsChecked == true,
-                GlutenFreeCheck.IsChecked == true,
-                ExtraPortionCheck.IsChecked == true
-            );
+            _viewModel.OrderVM.SelectedMenuItem = menuItem;
+            _viewModel.OrderVM.ExtraCheese = ExtraCheeseCheck.IsChecked == true;
+            _viewModel.OrderVM.Bacon = BaconCheck.IsChecked == true;
+            _viewModel.OrderVM.SpicySauce = SpicySauceCheck.IsChecked == true;
+            _viewModel.OrderVM.GlutenFree = GlutenFreeCheck.IsChecked == true;
+            _viewModel.OrderVM.ExtraPortion = ExtraPortionCheck.IsChecked == true;
 
-            _waiterService.AddItemToOrder(_currentOrder, dish);
-            _currentOrderItems.Add(new OrderItemViewModel(dish));
+            _viewModel.OrderVM.AddToOrderCommand.Execute(null);
 
             ExtraCheeseCheck.IsChecked = false;
             BaconCheck.IsChecked = false;
@@ -228,155 +330,90 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
             ExtraPortionCheck.IsChecked = false;
 
             UpdateOrderUI();
-            AddNotification("Dodano: " + dish.GetDescription() + " (" + dish.GetPrice().ToString("N2") + " zl)");
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Blad", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void RemoveFromOrder_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentOrder == null || CurrentOrderListBox.SelectedItem is not OrderItemViewModel item)
+        if (_viewModel.OrderVM.CurrentOrder == null || CurrentOrderListBox.SelectedItem is not OrderItemViewModel item)
         {
-            MessageBox.Show("Wybierz pozycje do usuniecia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Wybierz pozycję do usunięcia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        try
-        {
-            var dish = _currentOrder.Items.FirstOrDefault(d => d.GetDescription() == item.Description);
-            if (dish != null)
-            {
-                _waiterService.RemoveItemFromOrder(_currentOrder, dish);
-                _currentOrderItems.Remove(item);
-                UpdateOrderUI();
-                AddNotification("Usunieto: " + item.Name);
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Blad", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        _viewModel.OrderVM.RemoveFromOrderCommand.Execute(item);
+        UpdateOrderUI();
     }
 
     private void UndoOrder_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentOrder == null) return;
+        if (_viewModel.OrderVM.CurrentOrder == null) return;
 
         try
         {
-            _waiterService.UndoLastAction(_currentOrder);
-            RefreshOrderItems();
+            _viewModel.OrderVM.UndoCommand.Execute(null);
             UpdateOrderUI();
-            AddNotification("Cofnieto ostatnia akcje (Memento)");
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Blad", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
     private void RedoOrder_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentOrder == null) return;
+        if (_viewModel.OrderVM.CurrentOrder == null) return;
 
         try
         {
-            _waiterService.RedoAction(_currentOrder);
-            RefreshOrderItems();
+            _viewModel.OrderVM.RedoCommand.Execute(null);
             UpdateOrderUI();
-            AddNotification("Powtorzono akcje (Memento)");
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Blad", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
         }
-    }
-
-    private void RefreshOrderItems()
-    {
-        if (_currentOrder == null) return;
-
-        _currentOrderItems.Clear();
-        foreach (var dish in _currentOrder.Items)
-            _currentOrderItems.Add(new OrderItemViewModel(dish));
     }
 
     private void SubmitOrder_Click(object sender, RoutedEventArgs e)
     {
-        if (_currentOrder == null || _currentOrder.Items.Count == 0)
+        if (_viewModel.OrderVM.CurrentOrder == null || _viewModel.OrderVM.CurrentOrderItems.Count == 0)
         {
-            MessageBox.Show("Zamowienie jest puste!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Zamówienie jest puste!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
         try
         {
-            _waiterService.SubmitOrder(_currentOrder);
-            _notificationSubject.NotifyNewOrder(_currentOrder.Id, _currentOrder.TableNumber);
-
-            _currentOrder = null;
-            _currentOrderItems.Clear();
+            _viewModel.OrderVM.SubmitOrderCommand.Execute(null);
             UpdateOrderUI();
-
-            if (_selectedTable?.Status == TableStatus.Occupied)
-                _currentOrder = _waiterService.CreateOrder(_selectedTable.Number);
-
-            UpdateKitchenStatus();
+            UpdateKitchenStatusUI();
         }
         catch (Exception ex)
         {
-            MessageBox.Show(ex.Message, "Blad", MessageBoxButton.OK, MessageBoxImage.Error);
+            MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
         }
     }
 
-    private void UpdateOrderUI()
-    {
-        if (_currentOrder != null)
-        {
-            TotalPriceText.Text = _currentOrder.TotalPrice.ToString("N2") + " zl";
+    #endregion
 
-            var strategy = _cashierService.CurrentStrategy;
-            var finalPrice = strategy.CalculatePrice(_currentOrder);
-            var discount = strategy.GetDiscountPercentage();
-
-            if (discount > 0)
-            {
-                DiscountText.Text = strategy.Name + " (-" + discount + "%)";
-                FinalPriceText.Text = "Po znizce: " + finalPrice.ToString("N2") + " zl";
-            }
-            else
-            {
-                DiscountText.Text = "";
-                FinalPriceText.Text = "";
-            }
-
-            UndoButton.IsEnabled = _waiterService.CanUndo(_currentOrder);
-            RedoButton.IsEnabled = _waiterService.CanRedo(_currentOrder);
-        }
-        else
-        {
-            TotalPriceText.Text = "0,00 zl";
-            DiscountText.Text = "";
-            FinalPriceText.Text = "";
-            UndoButton.IsEnabled = false;
-            RedoButton.IsEnabled = false;
-        }
-    }
+    #region Obsługa kuchni (delegacja do KitchenViewModel)
 
     private void StartPreparing_Click(object sender, RoutedEventArgs e)
     {
         if (KitchenQueueListBox.SelectedItem is Order order)
         {
-            _kitchenService.StartPreparing(order);
-            AddNotification("Rozpoczeto przygotowanie zamowienia #" + order.Id);
-            UpdateKitchenStatus();
+            _viewModel.KitchenVM.SelectedQueueOrder = order;
+            _viewModel.KitchenVM.StartPreparingCommand.Execute(null);
+            UpdateKitchenStatusUI();
         }
         else
         {
-            MessageBox.Show("Wybierz zamowienie z kolejki!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Wybierz zamówienie z kolejki!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -384,38 +421,32 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
     {
         if (PreparingListBox.SelectedItem is Order order)
         {
-            _kitchenService.CompleteOrder(order);
-            _notificationSubject.NotifyOrderReady(order.Id, order.TableNumber);
-            UpdateKitchenStatus();
+            _viewModel.KitchenVM.SelectedPreparingOrder = order;
+            _viewModel.KitchenVM.MarkReadyCommand.Execute(null);
+            UpdateKitchenStatusUI();
         }
         else
         {
-            MessageBox.Show("Wybierz zamowienie!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Wybierz zamówienie!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
-    private void UpdateKitchenStatus()
-    {
-        QueueCountText.Text = "W kolejce: " + _kitchenService.GetQueueLength() + " zamowien";
-        PreparingCountText.Text = "Przygotowywanych: " + _kitchenService.GetPreparingCount();
+    #endregion
 
-        KitchenQueueStatusText.Text = "W kolejce: " + _kitchenService.GetQueueLength();
-        KitchenPreparingStatusText.Text = "W przygotowaniu: " + _kitchenService.GetPreparingCount();
-        EstimatedWaitText.Text = "Szacowany czas: " + _kitchenService.EstimateWaitTime().TotalMinutes.ToString("N0") + " min";
-    }
+    #region Obsługa dostawy i płatności (delegacja do PaymentViewModel)
 
     private void DeliverOrder_Click(object sender, RoutedEventArgs e)
     {
         if (ReadyOrdersListBox.SelectedItem is Order order)
         {
-            _waiterService.DeliverOrder(order);
-            _deliveredOrders.Add(order);
-            _notificationSubject.NotifyOrderDelivered(order.Id, order.TableNumber);
-            UpdatePaymentSummary();
+            _viewModel.WaiterService.DeliverOrder(order);
+            _viewModel.PaymentVM.AddDeliveredOrder(order);
+            _viewModel.NotificationVM.AddNotification($"Zamówienie #{order.Id} dostarczone do stolika {order.TableNumber}");
+            UpdatePaymentSummaryUI();
         }
         else
         {
-            MessageBox.Show("Wybierz zamowienie do dostarczenia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Wybierz zamówienie do dostarczenia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 
@@ -423,321 +454,82 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
     {
         if (PricingStrategyComboBox.SelectedItem is IPricingStrategy strategy)
         {
-            _cashierService.SetPricingStrategy(strategy);
-            UpdatePaymentSummary();
+            _viewModel.PaymentVM.SelectedStrategy = strategy;
+            UpdatePaymentSummaryUI();
             UpdateOrderUI();
         }
     }
 
-    private void UpdatePaymentSummary()
+    private void DeliveredOrdersListBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
         if (DeliveredOrdersListBox.SelectedItem is Order order)
         {
-            var strategy = _cashierService.CurrentStrategy;
-            var originalPrice = order.TotalPrice;
-            var finalPrice = strategy.CalculatePrice(order);
-            var discount = strategy.GetDiscountPercentage();
-
-            PaymentSummaryText.Text = "Do zaplaty: " + finalPrice.ToString("N2") + " zl";
-            PaymentDiscountText.Text = discount > 0 
-                ? "Znizka " + discount + "% (bylo: " + originalPrice.ToString("N2") + " zl)" 
-                : "";
-        }
-        else
-        {
-            PaymentSummaryText.Text = "Wybierz zamowienie";
-            PaymentDiscountText.Text = "";
+            _viewModel.PaymentVM.SelectedOrder = order;
+            UpdatePaymentSummaryUI();
         }
     }
 
     private void ProcessPayment_Click(object sender, RoutedEventArgs e)
     {
-        if (DeliveredOrdersListBox.SelectedItem is not Order order)
+        if (DeliveredOrdersListBox.SelectedItem is not Order)
         {
-            MessageBox.Show("Wybierz zamowienie do oplacenia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show("Wybierz zamówienie do opłacenia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        var paymentType = PaymentMethodComboBox.SelectedIndex switch
-        {
-            0 => PaymentType.Cash,
-            1 => PaymentType.Card,
-            2 => PaymentType.Blik,
-            3 => PaymentType.BankTransfer,
-            _ => PaymentType.Cash
-        };
-
-        string? blikCode = null;
-        if (paymentType == PaymentType.Blik)
-        {
-            blikCode = BlikCodeTextBox.Text;
-            if (string.IsNullOrEmpty(blikCode) || blikCode.Length != 6)
-            {
-                MessageBox.Show("Podaj prawidlowy 6-cyfrowy kod BLIK!", "Blad", MessageBoxButton.OK, MessageBoxImage.Error);
-                return;
-            }
-        }
-
-        try
-        {
-            var payment = _cashierService.ProcessPayment(order, paymentType, blikCode);
-
-            if (payment.IsSuccessful)
-            {
-                var finalPrice = _cashierService.CurrentStrategy.CalculatePrice(order);
-                _statisticsService.RecordCompletedOrder(order, finalPrice);
-                _deliveredOrders.Remove(order);
-                _waiterService.CompleteOrder(order);
-
-                _tableService.FreeTable(order.TableNumber);
-
-                AddNotification("Platnosc " + finalPrice.ToString("N2") + " zl - " + payment.Type + " (#" + payment.TransactionId + ")");
-                UpdateStatistics();
-
-                MessageBox.Show("Platnosc zrealizowana!\n\nKwota: " + finalPrice.ToString("N2") + " zl\nMetoda: " + payment.Type + "\nTransakcja: " + payment.TransactionId,
-                    "Sukces", MessageBoxButton.OK, MessageBoxImage.Information);
-            }
-            else
-            {
-                MessageBox.Show("Platnosc nie powiodla sie!", "Blad", MessageBoxButton.OK, MessageBoxImage.Error);
-            }
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Blad", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
+        _viewModel.PaymentVM.SelectedPaymentMethodIndex = PaymentMethodComboBox.SelectedIndex;
+        _viewModel.PaymentVM.BlikCode = BlikCodeTextBox.Text;
+        _viewModel.PaymentVM.ProcessPaymentCommand.Execute(null);
     }
 
-    private void UpdateStatistics()
-    {
-        DailyRevenueText.Text = _cashierService.GetDailyRevenue().ToString("N2") + " zl";
-        TodayOrdersText.Text = _cashierService.GetTodayTransactionCount().ToString();
-        AverageOrderText.Text = _statisticsService.GetAverageOrderValue().ToString("N2") + " zl";
+    #endregion
 
-        FreeTablesText.Text = "Wolne: " + _tableService.GetFreeTablesCount();
-        OccupiedTablesText.Text = "Zajete: " + _tableService.GetOccupiedTablesCount();
-        TotalSeatsText.Text = "Miejsca: " + _tableService.GetOccupiedSeats() + "/" + _tableService.GetTotalSeats();
-    }
-
-    private void Mediator_OnNotification(object? sender, string message)
-    {
-        Dispatcher.Invoke(() => AddNotification(message));
-    }
-
-    private void Mediator_OnOrderReady(object? sender, Order order)
-    {
-        Dispatcher.Invoke(() => AddNotification("Zamowienie #" + order.Id + " gotowe!"));
-    }
-
-    private void Mediator_OnOrderDelivered(object? sender, Order order)
-    {
-        Dispatcher.Invoke(() => AddNotification("Zamowienie #" + order.Id + " dostarczone do stolika " + order.TableNumber));
-    }
-
-    private void Mediator_OnPaymentComplete(object? sender, (int TableNumber, decimal Amount) data)
-    {
-        Dispatcher.Invoke(() => UpdateStatistics());
-    }
-
-    public void Update(OrderNotification data)
-    {
-        Dispatcher.Invoke(() => AddNotification("[" + data.Status + "] " + data.Message));
-    }
-
-    private void AddNotification(string message)
-    {
-        var timestamp = DateTime.Now.ToString("HH:mm:ss");
-        _notificationLog.Insert(0, "[" + timestamp + "] " + message);
-
-        while (_notificationLog.Count > 100)
-            _notificationLog.RemoveAt(_notificationLog.Count - 1);
-    }
-
-    private void CategoryTile_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is System.Windows.Controls.Border border && border.Tag is DishCategory category)
-        {
-            var converter = new UI.Converters.CategoryToNameConverter();
-            SelectedCategoryText.Text = converter.Convert(category, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture).ToString();
-            MenuListBox.ItemsSource = _menuService.GetItemsByCategory(category);
-        }
-    }
-
-    private void GuestCountTile_Click(object sender, MouseButtonEventArgs e)
-    {
-        if (sender is Border border && border.Tag is int guestCount)
-        {
-            _selectedGuestCount = guestCount;
-            
-            // Resetuj kolor wszystkich kafelków do domyślnego
-            Guest1Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-            Guest2Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-            Guest3Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-            Guest4Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-            
-            // Ustaw kolor wybranego kafelka
-            border.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5D4037"));
-            _selectedGuestTile = border;
-            
-            // Wyczyść pole niestandardowe
-            CustomGuestCountTextBox.Text = "";
-            
-            AddNotification("Wybrano liczbe gosci: " + guestCount);
-        }
-    }
-    
-    private void CustomGuestCount_Changed(object sender, TextChangedEventArgs e)
-    {
-        if (!string.IsNullOrWhiteSpace(CustomGuestCountTextBox.Text))
-        {
-            if (int.TryParse(CustomGuestCountTextBox.Text, out int customCount) && customCount > 0)
-            {
-                _selectedGuestCount = customCount;
-                
-                // Resetuj kolor wszystkich kafelków
-                Guest1Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-                Guest2Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-                Guest3Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-                Guest4Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-                _selectedGuestTile = null;
-                
-                AddNotification("Wybrano niestandardowa liczbe gosci: " + customCount);
-            }
-        }
-        else
-        {
-            // Jeśli pole zostało wyczyszczone, przywróć domyślny wybór (2)
-            _selectedGuestCount = 2;
-            Guest1Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-            Guest2Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5D4037"));
-            Guest3Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-            Guest4Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
-            _selectedGuestTile = Guest2Tile;
-        }
-    }
+    #region Symulacja (delegacja do SimulationViewModel)
 
     private void RunSimulation_Click(object sender, RoutedEventArgs e)
     {
-        // Pobierz czas trwania symulacji z pola tekstowego
         if (!int.TryParse(SimulationDurationTextBox.Text, out int duration) || duration <= 0)
         {
             MessageBox.Show("Podaj prawidłowy czas symulacji (w minutach)!", "Błąd", MessageBoxButton.OK, MessageBoxImage.Warning);
             return;
         }
 
-        // Pobierz prędkość symulacji
-        int speed = 500; // domyślna
+        int speed = 500;
         if (SimulationSpeedComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is string tagValue)
         {
             speed = int.Parse(tagValue);
         }
 
-        // Uruchom symulację w trybie czasu rzeczywistego
-        _simulationService.StartSimulation(duration, speed);
-        
-        // Przełącz źródła danych dla zakładki Kuchnia i Kelner na dane z symulacji
-        SwitchToSimulationDataSources();
-        
-        // Podłącz obserwację wyników na żywo
-        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
-        timer.Tick += (s, args) =>
-        {
-            var result = _simulationService.GetCurrentResults();
-            
-            // Aktualizuj wyniki na bieżąco
-            SimServedText.Text = result.ServedGuests.ToString();
-            SimLostText.Text = result.LostGuests.ToString();
-            SimRevenueText.Text = result.TotalRevenue.ToString("N2") + " zł";
-            SimServiceRateText.Text = result.ServiceRate.ToString("N1") + "%";
-            
-            // Top danie
-            if (result.OrderedDishes.Any())
-            {
-                var topDish = result.OrderedDishes.OrderByDescending(x => x.Value).First();
-                SimTopDishText.Text = topDish.Key + " (" + topDish.Value + " szt.)";
-            }
-            else
-            {
-                SimTopDishText.Text = "-";
-            }
-            
-            // Aktualizuj log
-            SimulationLogListBox.ItemsSource = _simulationService.SimulationLog;
-            
-            // Przewiń log na dół
-            if (SimulationLogListBox.Items.Count > 0)
-            {
-                SimulationLogListBox.ScrollIntoView(SimulationLogListBox.Items[SimulationLogListBox.Items.Count - 1]);
-            }
-            
-            // Aktualizuj liczniki w zakładce Kuchnia
-            QueueCountText.Text = $"W kolejce: {_simulationService.KitchenQueueCount}";
-            PreparingCountText.Text = $"Przygotowywane: {_simulationService.PreparingCount}";
-            
-            // Status
-            if (result.AcceptingNewGuests)
-            {
-                SimStatusText.Text = $"Trwa... Czas: {_simulationService.CurrentTimeFormatted} (przyjmowanie gości)";
-            }
-            else if (result.IsRunning)
-            {
-                SimStatusText.Text = $"Trwa... Czas: {_simulationService.CurrentTimeFormatted} (finalizacja)";
-            }
-            else
-            {
-                SimStatusText.Text = "Zakończona";
-                timer.Stop();
-                RunSimulationButton.IsEnabled = true;
-                StopSimulationButton.IsEnabled = false;
-                
-                // Przywróć oryginalne źródła danych
-                RestoreOriginalDataSources();
-                UpdateStatistics();
-            }
-        };
-        timer.Start();
+        _viewModel.SimulationVM.Duration = duration;
+        _viewModel.SimulationVM.Speed = speed;
+        _viewModel.SimulationVM.Run();
+    }
 
-        // Dezaktywuj/aktywuj przyciski
-        RunSimulationButton.IsEnabled = false;
-        StopSimulationButton.IsEnabled = true;
-        SimStatusText.Text = "Uruchamianie symulacji...";
-        
-        AddNotification("Symulacja uruchomiona w trybie czasu rzeczywistego");
+    private void StopSimulation_Click(object sender, RoutedEventArgs e)
+    {
+        _viewModel.SimulationVM.Stop();
     }
 
     private void ApplySimulationParams_Click(object sender, RoutedEventArgs e)
     {
         try
         {
-            // Pobierz i zastosuj parametry symulacji
             if (int.TryParse(MinArrivalTextBox.Text, out int minArrival))
-                _simulationService.MinArrivalInterval = minArrival;
-            
+                _viewModel.SimulationVM.MinArrivalInterval = minArrival;
             if (int.TryParse(MaxArrivalTextBox.Text, out int maxArrival))
-                _simulationService.MaxArrivalInterval = maxArrival;
-            
+                _viewModel.SimulationVM.MaxArrivalInterval = maxArrival;
             if (int.TryParse(MinGroupSizeTextBox.Text, out int minGroup))
-                _simulationService.MinGroupSize = minGroup;
-            
+                _viewModel.SimulationVM.MinGroupSize = minGroup;
             if (int.TryParse(MaxGroupSizeTextBox.Text, out int maxGroup))
-                _simulationService.MaxGroupSize = maxGroup;
-            
+                _viewModel.SimulationVM.MaxGroupSize = maxGroup;
             if (int.TryParse(MinWaitTimeTextBox.Text, out int minWait))
-                _simulationService.MinWaitTime = minWait;
-            
+                _viewModel.SimulationVM.MinWaitTime = minWait;
             if (int.TryParse(MaxWaitTimeTextBox.Text, out int maxWait))
-                _simulationService.MaxWaitTime = maxWait;
-            
+                _viewModel.SimulationVM.MaxWaitTime = maxWait;
             if (int.TryParse(MaxConcurrentOrdersTextBox.Text, out int maxConcurrent))
-                _simulationService.MaxConcurrentOrders = maxConcurrent;
-            
-            AddNotification("Parametry symulacji zaktualizowane");
-            MessageBox.Show("Parametry symulacji zostały zaktualizowane!\n\n" +
-                $"Interwał klientów: {_simulationService.MinArrivalInterval}-{_simulationService.MaxArrivalInterval} min\n" +
-                $"Rozmiar grup: {_simulationService.MinGroupSize}-{_simulationService.MaxGroupSize} osób\n" +
-                $"Czas oczekiwania: {_simulationService.MinWaitTime}-{_simulationService.MaxWaitTime} min\n" +
-                $"Równoległe zamówienia: {_simulationService.MaxConcurrentOrders}",
-                "Parametry zapisane", MessageBoxButton.OK, MessageBoxImage.Information);
+                _viewModel.SimulationVM.MaxConcurrentOrders = maxConcurrent;
+
+            _viewModel.SimulationVM.ApplyParamsCommand.Execute(null);
         }
         catch (Exception ex)
         {
@@ -745,41 +537,55 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
         }
     }
 
-    private void StopSimulation_Click(object sender, RoutedEventArgs e)
+    private void StartSimulationUpdateTimer()
     {
-        _simulationService.StopSimulation();
-        
-        RunSimulationButton.IsEnabled = true;
-        StopSimulationButton.IsEnabled = false;
-        
-        var result = _simulationService.GetCurrentResults();
-        SimStatusText.Text = $"Zatrzymana - obsłużono {result.ServedGuests} gości, utracono {result.LostGuests}";
-        
-        // Przywróć oryginalne źródła danych
-        RestoreOriginalDataSources();
-        UpdateStatistics();
-        AddNotification("Symulacja zatrzymana przez użytkownika");
+        var simTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        simTimer.Tick += (s, args) =>
+        {
+            _viewModel.SimulationVM.UpdateResults();
+
+            SimServedText.Text = _viewModel.SimulationVM.ServedGuests;
+            SimLostText.Text = _viewModel.SimulationVM.LostGuests;
+            SimRevenueText.Text = _viewModel.SimulationVM.TotalRevenue;
+            SimServiceRateText.Text = _viewModel.SimulationVM.ServiceRate;
+            SimTopDishText.Text = _viewModel.SimulationVM.TopDish;
+            SimStatusText.Text = _viewModel.SimulationVM.Status;
+
+            SimulationLogListBox.ItemsSource = _viewModel.SimulationVM.Log;
+
+            if (SimulationLogListBox.Items.Count > 0)
+                SimulationLogListBox.ScrollIntoView(SimulationLogListBox.Items[^1]);
+
+            if (!_viewModel.SimulationVM.CanStop)
+            {
+                simTimer.Stop();
+            }
+        };
+        simTimer.Start();
     }
-    
+
     private void SwitchToSimulationDataSources()
     {
-        // Przełącz źródła danych list na kolekcje z symulacji
-        KitchenQueueListBox.ItemsSource = _simulationService.KitchenQueue;
-        PreparingListBox.ItemsSource = _simulationService.PreparingOrders;
-        ReadyOrdersListBox.ItemsSource = _simulationService.ReadyOrders;
-        DeliveredOrdersListBox.ItemsSource = _simulationService.DeliveredOrders;
+        KitchenQueueListBox.ItemsSource = _viewModel.SimulationVM.KitchenQueue;
+        PreparingListBox.ItemsSource = _viewModel.SimulationVM.PreparingOrders;
+        ReadyOrdersListBox.ItemsSource = _viewModel.SimulationVM.ReadyOrders;
+        DeliveredOrdersListBox.ItemsSource = _viewModel.SimulationVM.DeliveredOrders;
     }
-    
+
     private void RestoreOriginalDataSources()
     {
-        // Przywróć oryginalne źródła danych z serwisów
-        KitchenQueueListBox.ItemsSource = _kitchenService.OrderQueue;
-        PreparingListBox.ItemsSource = _kitchenService.PreparingOrders;
-        ReadyOrdersListBox.ItemsSource = _waiterService.ReadyOrders;
-        DeliveredOrdersListBox.ItemsSource = _deliveredOrders;
+        KitchenQueueListBox.ItemsSource = _viewModel.KitchenVM.OrderQueue;
+        PreparingListBox.ItemsSource = _viewModel.KitchenVM.PreparingOrders;
+        ReadyOrdersListBox.ItemsSource = _viewModel.WaiterService.ReadyOrders;
+        DeliveredOrdersListBox.ItemsSource = _viewModel.DeliveredOrders;
     }
+
+    #endregion
 }
 
+/// <summary>
+/// ViewModel dla pojedynczej pozycji zamówienia
+/// </summary>
 public class OrderItemViewModel
 {
     public string Name { get; }

@@ -6,12 +6,15 @@
 
 **Problem:** 
 - `MainWindow.xaml.cs` miał zbyt wiele odpowiedzialności (UI, logika biznesowa, formatowanie, koordynacja)
+- `IMenuService` miał zbyt wiele odpowiedzialności (zapytania + tworzenie dań)
 
 **Rozwiązanie:**
 - **TableManagementPresenter** - odpowiada TYLKO za logikę biznesową stolików
 - **OrderManagementPresenter** - odpowiada TYLKO za logikę biznesową zamówień
 - **PriceFormatter, TimeFormatter, TableStatusFormatter** - odpowiadają TYLKO za formatowanie
 - **MainWindow** - teraz odpowiada TYLKO za prezentację i delegację do presenterów
+- **IMenuQueryService** - odpowiada TYLKO za pobieranie danych menu
+- **IDishFactory** - odpowiada TYLKO za tworzenie dań z dodatkami
 
 **Korzyści:**
 - Łatwiejsze testowanie (można testować logikę bez UI)
@@ -24,16 +27,21 @@
 - **Wzorzec Strategy** - nowe strategie cenowe można dodawać bez modyfikacji istniejącego kodu
 - **Wzorzec Decorator** - nowe dodatki do dań można dodawać bez zmiany klas bazowych
 - **Wzorzec State** - nowe stany zamówień można dodawać bez modyfikacji logiki
+- **DishExtra enum** - nowe dodatki można dodawać przez rozszerzenie enum i słownika dekoratorów
 
-**Przykład:**
+**Przykład (przed - naruszenie OCP):**
 ```csharp
-// Nowa strategia cenowa - NIE wymaga modyfikacji CashierService
-public class WeekendDiscountStrategy : IPricingStrategy
-{
-    public string Name => "Zniżka weekendowa";
-    public decimal CalculatePrice(Order order) => order.TotalPrice * 0.85m;
-    public int GetDiscountPercentage() => 15;
-}
+// Dodanie nowego dodatku wymagało zmiany sygnatury metody
+IDish CreateDishWithExtras(MenuItem menuItem, bool extraCheese, bool bacon, 
+    bool spicySauce, bool glutenFree, bool extraPortion, bool veganOption);
+```
+
+**Przykład (teraz - zgodne z OCP):**
+```csharp
+// Nowy dodatek wymaga tylko rozszerzenia enum i słownika
+public enum DishExtra { ExtraCheese, Bacon, SpicySauce, GlutenFree, ExtraPortion, VeganOption }
+
+IDish CreateDishWithExtras(MenuItem menuItem, IEnumerable<DishExtra> extras);
 ```
 
 ### ✅ 3. LSP (Liskov Substitution Principle)
@@ -42,6 +50,7 @@ public class WeekendDiscountStrategy : IPricingStrategy
 - **IDish** - wszystkie dekoratory można podstawić zamiast bazowego dania
 - **IPricingStrategy** - wszystkie strategie są wymienne
 - **IOrderState** - wszystkie stany zamówienia są wymienne
+- **IMenuQueryService** - implementacje są wymienne
 
 **Przykład:**
 ```csharp
@@ -53,130 +62,93 @@ dish = new BaconDecorator(dish);       // LSP - nadal IDish
 ### ✅ 4. ISP (Interface Segregation Principle)
 
 **Wprowadzone ulepszenia:**
+- **IMenuQueryService** - tylko operacje odczytu menu
+- **IDishFactory** - tylko tworzenie dań
+- **IMenuService** - fasada łącząca powyższe (dla wygody)
 - **ITableService** - tylko operacje na stolikach
-- **IMenuService** - tylko operacje na menu
-- **ITextFormatter** - tylko formatowanie (zamiast jednego dużego interfejsu)
+- **ITextFormatter** - tylko formatowanie
 
 **Problem (przed):**
 ```csharp
 // Zbyt duży interfejs - klient musi implementować wszystko
-interface IRestaurantService {
-    void ManageTables();
-    void ManageOrders();
-    void ManagePayments();
-    void ManageKitchen();
-    void GenerateReports();
+interface IMenuService {
+    List<MenuItem> GetAllItems();
+    List<MenuItem> GetItemsByCategory(DishCategory category);
+    IDish CreateDish(MenuItem menuItem);
+    IDish CreateDishWithExtras(MenuItem menuItem, bool extraCheese, ...);
 }
 ```
 
 **Rozwiązanie (teraz):**
 ```csharp
 // Małe, wyspecjalizowane interfejsy
-interface ITableService { /* tylko stoliki */ }
-interface IMenuService { /* tylko menu */ }
-interface ITextFormatter { /* tylko formatowanie */ }
+interface IMenuQueryService { /* tylko odczyt menu */ }
+interface IDishFactory { /* tylko tworzenie dań */ }
+interface IMenuService : IMenuQueryService, IDishFactory { /* fasada */ }
 ```
 
 ### ✅ 5. DIP (Dependency Inversion Principle)
 
 **Problem (przed):**
 ```csharp
-// MainWindow zależał od konkretnych implementacji
-private readonly TableService _tableService;
-private readonly MenuService _menuService;
+// MenuService bezpośrednio tworzył dekoratory
+if (extraCheese) dish = new ExtraCheeseDecorator(dish);
+if (bacon) dish = new BaconDecorator(dish);
 ```
 
 **Rozwiązanie (teraz):**
 ```csharp
-// Presentery zależą od abstrakcji (interfejsów)
-public class TableManagementPresenter
+// MenuService deleguje do IDishFactory (zależy od abstrakcji)
+public class MenuService : IMenuService
 {
-    private readonly ITableService _tableService;
+    private readonly IMenuQueryService _queryService;
+    private readonly IDishFactory _dishFactory;
     
-    public TableManagementPresenter(ITableService tableService)
-    {
-        _tableService = tableService ?? throw new ArgumentNullException(nameof(tableService));
-    }
+    public IDish CreateDishWithExtras(MenuItem menuItem, IEnumerable<DishExtra> extras) => 
+        _dishFactory.CreateDishWithExtras(menuItem, extras);
 }
 ```
 
-**Korzyści:**
-- Łatwe mockowanie w testach
-- Możliwość podmiany implementacji
-- Luźne powiązania między komponentami
+## 📁 Struktura folderów po refaktoryzacji
 
-## Wzorce projektowe a SOLID
-
-### Wzorce wspierające SOLID:
-
-1. **Strategy** → OCP, DIP
-   - Nowe strategie bez modyfikacji kodu
-   - Zależność od interfejsu `IPricingStrategy`
-
-2. **Decorator** → OCP, SRP
-   - Nowe funkcjonalności bez modyfikacji bazowej klasy
-   - Każdy dekorator ma jedną odpowiedzialność
-
-3. **State** → OCP, SRP
-   - Nowe stany bez modyfikacji kontekstu
-   - Każdy stan ma własną logikę
-
-4. **Mediator** → SRP, DIP
-   - Komponenty nie komunikują się bezpośrednio
-   - Zależność od interfejsu `IRestaurantMediator`
-
-5. **Observer** → OCP, DIP
-   - Nowi obserwatorzy bez modyfikacji subiektu
-   - Zależność od interfejsu `IObserver<T>`
-
-## Przykłady użycia (po refaktoryzacji)
-
-### Zarządzanie stolikami:
-```csharp
-var tablePresenter = new TableManagementPresenter(tableService);
-tablePresenter.NotificationRequested += (s, msg) => ShowNotification(msg);
-
-var result = tablePresenter.OccupyTable(1, 4);
-if (result.Success)
-{
-    UpdateUI();
-}
+```
+MojsAjsli/
+├── Services/
+│   ├── Interfaces/
+│   │   ├── Menu/
+│   │   │   └── IMenuQueryService.cs      # SRP - tylko odczyt
+│   │   ├── Dishes/
+│   │   │   ├── IDishFactory.cs           # SRP - tylko tworzenie
+│   │   │   └── DishExtra.cs              # OCP - łatwe rozszerzanie
+│   │   ├── IMenuService.cs               # ISP - fasada
+│   │   └── ITableService.cs
+│   ├── Implementations/
+│   │   ├── Menu/
+│   │   │   └── MenuQueryService.cs
+│   │   └── Dishes/
+│   │       └── DishFactory.cs
+│   ├── MenuService.cs                    # Fasada + Singleton
+│   ├── TableService.cs
+│   └── ...
+├── Patterns/
+│   ├── Decorator/
+│   ├── Iterator/
+│   ├── Mediator/
+│   ├── Memento/
+│   ├── Observer/
+│   ├── State/
+│   └── Strategy/
+├── Presenters/
+├── Formatters/
+└── Models/
 ```
 
-### Zarządzanie zamówieniami:
-```csharp
-var orderPresenter = new OrderManagementPresenter(menuService, waiterService);
-orderPresenter.OrderChanged += (s, e) => RefreshOrderView();
+## 🎯 Podsumowanie korzyści
 
-var result = orderPresenter.AddItemToOrder(order, menuItem, 
-    extraCheese: true, bacon: false, /* ... */);
-```
-
-### Formatowanie:
-```csharp
-ITextFormatter priceFormatter = new PriceFormatter();
-string formatted = priceFormatter.Format(29.99m); // "29,99 zł"
-```
-
-## Podsumowanie
-
-### Przed refaktoryzacją:
-- ❌ MainWindow miał ~750 linii kodu
-- ❌ Mieszanie logiki biznesowej z UI
-- ❌ Trudne do testowania
-- ❌ Zależności od konkretnych implementacji
-
-### Po refaktoryzacji:
-- ✅ Logika biznesowa w Presenterach (~100-150 linii każdy)
-- ✅ UI w MainWindow (~400 linii)
-- ✅ Łatwe do testowania jednostkowego
-- ✅ Zależności od interfejsów (DIP)
-- ✅ Każda klasa ma jedną odpowiedzialność (SRP)
-
-## Następne kroki (opcjonalne):
-
-1. **Dependency Injection Container** - użycie np. Microsoft.Extensions.DependencyInjection
-2. **MVVM Pattern** - pełne oddzielenie UI od logiki
-3. **Unit Tests** - testy dla presenterów i serwisów
-4. **Repository Pattern** - dla dostępu do danych (jeśli będzie baza danych)
-
+| Zasada | Korzyść |
+|--------|---------|
+| **SRP** | Każda klasa/interfejs ma jedną odpowiedzialność |
+| **OCP** | Nowe dodatki bez modyfikacji istniejącego kodu |
+| **LSP** | Wymienność implementacji bez efektów ubocznych |
+| **ISP** | Klienci zależą tylko od potrzebnych metod |
+| **DIP** | Zależności od abstrakcji, nie implementacji |
