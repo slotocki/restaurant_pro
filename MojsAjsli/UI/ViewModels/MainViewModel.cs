@@ -1,11 +1,12 @@
 ﻿using System.Collections.ObjectModel;
+using System.Windows.Input;
 using MojsAjsli.Models;
 using MojsAjsli.Patterns.Mediator;
 using MojsAjsli.Patterns.Observer;
 using MojsAjsli.Patterns.State;
 using MojsAjsli.Services;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// Główny ViewModel koordynujący pozostałe ViewModele (Fasada)
@@ -55,6 +56,9 @@ public class MainViewModel : BaseViewModel
         MenuCategories = new ObservableCollection<DishCategory>(Enum.GetValues<DishCategory>());
         MenuItems = new ObservableCollection<MenuItem>(_menuService.GetAllItems());
 
+        // Komendy dla dostarczania zamówień (delegacja do WaiterService)
+        DeliverOrderCommand = new RelayCommand<Order>(DeliverOrder, order => order != null);
+
         // Łączenie zdarzeń między ViewModelami
         ConnectViewModels();
         SetupMediatorEvents();
@@ -70,6 +74,9 @@ public class MainViewModel : BaseViewModel
     public StatisticsViewModel StatisticsVM { get; }
     public SimulationViewModel SimulationVM { get; }
     public NotificationViewModel NotificationVM { get; }
+
+    // Komendy
+    public ICommand DeliverOrderCommand { get; }
 
     // Menu
     public ObservableCollection<DishCategory> MenuCategories { get; }
@@ -90,6 +97,15 @@ public class MainViewModel : BaseViewModel
     }
 
     public string CurrentTime => DateTime.Now.ToString("HH:mm:ss");
+
+    private void DeliverOrder(Order? order)
+    {
+        if (order == null) return;
+
+        _waiterService.DeliverOrder(order);
+        // PaymentVM.AddDeliveredOrder jest wywoływane przez mediator, więc nie dodajemy tutaj
+        NotificationVM.AddNotification($"Zamówienie #{order.Id} dostarczone do stolika {order.TableNumber}");
+    }
 
     private void ConnectViewModels()
     {

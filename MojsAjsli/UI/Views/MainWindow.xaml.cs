@@ -9,25 +9,16 @@ using MojsAjsli.Patterns.Decorator;
 using MojsAjsli.Patterns.State;
 using MojsAjsli.Patterns.Strategy;
 using MojsAjsli.Services.Interfaces.Dishes;
-using MojsAjsli.ViewModels;
+using MojsAjsli.UI.ViewModels;
 using MenuItem = MojsAjsli.Models.MenuItem;
 
-namespace MojsAjsli;
+namespace MojsAjsli.UI.Views;
 
 /// <summary>
 /// MainWindow - odpowiedzialność ograniczona do:
 /// - Inicjalizacji UI i bindingów
 /// - Obsługi zdarzeń UI specyficznych dla WPF (kliknięcia, nawigacja)
 /// - Delegowania logiki biznesowej do ViewModeli
-/// 
-/// Logika biznesowa została wydzielona do ViewModeli zgodnie z SRP:
-/// - TableViewModel - zarządzanie stolikami
-/// - OrderViewModel - zarządzanie zamówieniami
-/// - KitchenViewModel - obsługa kuchni
-/// - PaymentViewModel - obsługa płatności
-/// - StatisticsViewModel - statystyki
-/// - SimulationViewModel - symulacja
-/// - NotificationViewModel - powiadomienia
 /// </summary>
 public partial class MainWindow : Window
 {
@@ -201,45 +192,6 @@ public partial class MainWindow : Window
         }
     }
 
-    private void OccupyTable_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.TableVM.SelectedTable == null)
-        {
-            MessageBox.Show("Najpierw wybierz stolik!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        _viewModel.TableVM.OccupyTableCommand.Execute(null);
-        UpdateOrderUI();
-        UpdateStatisticsUI();
-    }
-
-    private void FreeTable_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.TableVM.SelectedTable == null)
-        {
-            MessageBox.Show("Najpierw wybierz stolik!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        _viewModel.TableVM.FreeTableCommand.Execute(null);
-        _viewModel.OrderVM.ClearOrder();
-        UpdateOrderUI();
-        UpdateStatisticsUI();
-    }
-
-    private void CleanTable_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.TableVM.SelectedTable == null)
-        {
-            MessageBox.Show("Najpierw wybierz stolik!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        _viewModel.TableVM.CleanTableCommand.Execute(null);
-        UpdateStatisticsUI();
-    }
-
     private void GuestCountTile_Click(object sender, MouseButtonEventArgs e)
     {
         if (sender is Border border && border.Tag is int guestCount)
@@ -293,162 +245,14 @@ public partial class MainWindow : Window
         {
             _viewModel.SelectedCategory = category;
             var converter = new UI.Converters.CategoryToNameConverter();
-            SelectedCategoryText.Text = converter.Convert(category, typeof(string), null, System.Globalization.CultureInfo.CurrentCulture)?.ToString();
+            SelectedCategoryText.Text = converter.Convert(category, typeof(string), null!, System.Globalization.CultureInfo.CurrentCulture)?.ToString() ?? string.Empty;
             MenuListBox.ItemsSource = _viewModel.MenuItems;
         }
     }
 
-    private void AddToOrder_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.OrderVM.CurrentOrder == null)
-        {
-            MessageBox.Show("Najpierw zajmij stolik!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        if (MenuListBox.SelectedItem is not MenuItem menuItem)
-        {
-            MessageBox.Show("Wybierz danie z menu!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        try
-        {
-            _viewModel.OrderVM.SelectedMenuItem = menuItem;
-            _viewModel.OrderVM.ExtraCheese = ExtraCheeseCheck.IsChecked == true;
-            _viewModel.OrderVM.Bacon = BaconCheck.IsChecked == true;
-            _viewModel.OrderVM.SpicySauce = SpicySauceCheck.IsChecked == true;
-            _viewModel.OrderVM.GlutenFree = GlutenFreeCheck.IsChecked == true;
-            _viewModel.OrderVM.ExtraPortion = ExtraPortionCheck.IsChecked == true;
-
-            _viewModel.OrderVM.AddToOrderCommand.Execute(null);
-
-            ExtraCheeseCheck.IsChecked = false;
-            BaconCheck.IsChecked = false;
-            SpicySauceCheck.IsChecked = false;
-            GlutenFreeCheck.IsChecked = false;
-            ExtraPortionCheck.IsChecked = false;
-
-            UpdateOrderUI();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void RemoveFromOrder_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.OrderVM.CurrentOrder == null || CurrentOrderListBox.SelectedItem is not OrderItemViewModel item)
-        {
-            MessageBox.Show("Wybierz pozycję do usunięcia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        _viewModel.OrderVM.RemoveFromOrderCommand.Execute(item);
-        UpdateOrderUI();
-    }
-
-    private void UndoOrder_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.OrderVM.CurrentOrder == null) return;
-
-        try
-        {
-            _viewModel.OrderVM.UndoCommand.Execute(null);
-            UpdateOrderUI();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void RedoOrder_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.OrderVM.CurrentOrder == null) return;
-
-        try
-        {
-            _viewModel.OrderVM.RedoCommand.Execute(null);
-            UpdateOrderUI();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
-    private void SubmitOrder_Click(object sender, RoutedEventArgs e)
-    {
-        if (_viewModel.OrderVM.CurrentOrder == null || _viewModel.OrderVM.CurrentOrderItems.Count == 0)
-        {
-            MessageBox.Show("Zamówienie jest puste!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        try
-        {
-            _viewModel.OrderVM.SubmitOrderCommand.Execute(null);
-            UpdateOrderUI();
-            UpdateKitchenStatusUI();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
-
     #endregion
 
-    #region Obsługa kuchni (delegacja do KitchenViewModel)
-
-    private void StartPreparing_Click(object sender, RoutedEventArgs e)
-    {
-        if (KitchenQueueListBox.SelectedItem is Order order)
-        {
-            _viewModel.KitchenVM.SelectedQueueOrder = order;
-            _viewModel.KitchenVM.StartPreparingCommand.Execute(null);
-            UpdateKitchenStatusUI();
-        }
-        else
-        {
-            MessageBox.Show("Wybierz zamówienie z kolejki!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
-    private void MarkReady_Click(object sender, RoutedEventArgs e)
-    {
-        if (PreparingListBox.SelectedItem is Order order)
-        {
-            _viewModel.KitchenVM.SelectedPreparingOrder = order;
-            _viewModel.KitchenVM.MarkReadyCommand.Execute(null);
-            UpdateKitchenStatusUI();
-        }
-        else
-        {
-            MessageBox.Show("Wybierz zamówienie!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
-
-    #endregion
-
-    #region Obsługa dostawy i płatności (delegacja do PaymentViewModel)
-
-    private void DeliverOrder_Click(object sender, RoutedEventArgs e)
-    {
-        if (ReadyOrdersListBox.SelectedItem is Order order)
-        {
-            _viewModel.WaiterService.DeliverOrder(order);
-            _viewModel.PaymentVM.AddDeliveredOrder(order);
-            _viewModel.NotificationVM.AddNotification($"Zamówienie #{order.Id} dostarczone do stolika {order.TableNumber}");
-            UpdatePaymentSummaryUI();
-        }
-        else
-        {
-            MessageBox.Show("Wybierz zamówienie do dostarczenia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-        }
-    }
+    #region Obsługa płatności i symulacji
 
     private void PricingStrategy_Changed(object sender, SelectionChangedEventArgs e)
     {
@@ -469,73 +273,9 @@ public partial class MainWindow : Window
         }
     }
 
-    private void ProcessPayment_Click(object sender, RoutedEventArgs e)
-    {
-        if (DeliveredOrdersListBox.SelectedItem is not Order)
-        {
-            MessageBox.Show("Wybierz zamówienie do opłacenia!", "Uwaga", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        _viewModel.PaymentVM.SelectedPaymentMethodIndex = PaymentMethodComboBox.SelectedIndex;
-        _viewModel.PaymentVM.BlikCode = BlikCodeTextBox.Text;
-        _viewModel.PaymentVM.ProcessPaymentCommand.Execute(null);
-    }
-
     #endregion
 
-    #region Symulacja (delegacja do SimulationViewModel)
-
-    private void RunSimulation_Click(object sender, RoutedEventArgs e)
-    {
-        if (!int.TryParse(SimulationDurationTextBox.Text, out int duration) || duration <= 0)
-        {
-            MessageBox.Show("Podaj prawidłowy czas symulacji (w minutach)!", "Błąd", MessageBoxButton.OK, MessageBoxImage.Warning);
-            return;
-        }
-
-        int speed = 500;
-        if (SimulationSpeedComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is string tagValue)
-        {
-            speed = int.Parse(tagValue);
-        }
-
-        _viewModel.SimulationVM.Duration = duration;
-        _viewModel.SimulationVM.Speed = speed;
-        _viewModel.SimulationVM.Run();
-    }
-
-    private void StopSimulation_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.SimulationVM.Stop();
-    }
-
-    private void ApplySimulationParams_Click(object sender, RoutedEventArgs e)
-    {
-        try
-        {
-            if (int.TryParse(MinArrivalTextBox.Text, out int minArrival))
-                _viewModel.SimulationVM.MinArrivalInterval = minArrival;
-            if (int.TryParse(MaxArrivalTextBox.Text, out int maxArrival))
-                _viewModel.SimulationVM.MaxArrivalInterval = maxArrival;
-            if (int.TryParse(MinGroupSizeTextBox.Text, out int minGroup))
-                _viewModel.SimulationVM.MinGroupSize = minGroup;
-            if (int.TryParse(MaxGroupSizeTextBox.Text, out int maxGroup))
-                _viewModel.SimulationVM.MaxGroupSize = maxGroup;
-            if (int.TryParse(MinWaitTimeTextBox.Text, out int minWait))
-                _viewModel.SimulationVM.MinWaitTime = minWait;
-            if (int.TryParse(MaxWaitTimeTextBox.Text, out int maxWait))
-                _viewModel.SimulationVM.MaxWaitTime = maxWait;
-            if (int.TryParse(MaxConcurrentOrdersTextBox.Text, out int maxConcurrent))
-                _viewModel.SimulationVM.MaxConcurrentOrders = maxConcurrent;
-
-            _viewModel.SimulationVM.ApplyParamsCommand.Execute(null);
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show("Błąd podczas zapisywania parametrów: " + ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
-        }
-    }
+    #region Symulacja
 
     private void StartSimulationUpdateTimer()
     {
@@ -581,21 +321,4 @@ public partial class MainWindow : Window
     }
 
     #endregion
-}
-
-/// <summary>
-/// ViewModel dla pojedynczej pozycji zamówienia
-/// </summary>
-public class OrderItemViewModel
-{
-    public string Name { get; }
-    public string Description { get; }
-    public decimal Price { get; }
-
-    public OrderItemViewModel(IDish dish)
-    {
-        Name = dish.GetName();
-        Description = dish.GetDescription();
-        Price = dish.GetPrice();
-    }
 }

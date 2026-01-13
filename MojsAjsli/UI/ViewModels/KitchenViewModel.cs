@@ -5,7 +5,7 @@ using MojsAjsli.Patterns.Observer;
 using MojsAjsli.Patterns.State;
 using MojsAjsli.Services;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// ViewModel odpowiedzialny za zarządzanie kuchnią (SRP)
@@ -31,8 +31,8 @@ public class KitchenViewModel : BaseViewModel
         _notificationSubject = notificationSubject;
         _addNotification = addNotification;
 
-        StartPreparingCommand = new RelayCommand(StartPreparing, () => SelectedQueueOrder != null);
-        MarkReadyCommand = new RelayCommand(MarkReady, () => SelectedPreparingOrder != null);
+        StartPreparingCommand = new RelayCommand<Order>(StartPreparing, order => order != null);
+        MarkReadyCommand = new RelayCommand<Order>(MarkReady, order => order != null);
 
         UpdateStatus();
     }
@@ -82,20 +82,19 @@ public class KitchenViewModel : BaseViewModel
         EstimatedWaitTime = $"Szacowany czas: {_kitchenService.EstimateWaitTime().TotalMinutes:N0} min";
     }
 
-    private void StartPreparing()
+    private void StartPreparing(Order? order)
     {
-        if (_selectedQueueOrder == null) return;
+        if (order == null) return;
 
-        _kitchenService.StartPreparing(_selectedQueueOrder);
-        _addNotification($"Rozpoczęto przygotowanie zamówienia #{_selectedQueueOrder.Id}");
+        _kitchenService.StartPreparing(order);
+        _addNotification($"Rozpoczęto przygotowanie zamówienia #{order.Id}");
         UpdateStatus();
     }
 
-    private void MarkReady()
+    private void MarkReady(Order? order)
     {
-        if (_selectedPreparingOrder == null) return;
+        if (order == null) return;
 
-        var order = _selectedPreparingOrder;
         _kitchenService.CompleteOrder(order);
         _notificationSubject.NotifyOrderReady(order.Id, order.TableNumber);
         

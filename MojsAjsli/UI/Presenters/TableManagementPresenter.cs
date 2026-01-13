@@ -1,7 +1,7 @@
 ﻿using MojsAjsli.Models;
 using MojsAjsli.Services.Interfaces;
 
-namespace MojsAjsli.Presenters;
+namespace MojsAjsli.UI.Presenters;
 
 /// <summary>
 /// Presenter do zarządzania stolikami - SRP (Single Responsibility Principle)
@@ -70,4 +70,3 @@ public class TableManagementPresenter
 
     public Table? GetSelectedTable(int tableNumber) => _tableService.GetTable(tableNumber);
 }
-

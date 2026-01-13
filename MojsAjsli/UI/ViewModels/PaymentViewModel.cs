@@ -5,7 +5,7 @@ using MojsAjsli.Patterns.State;
 using MojsAjsli.Patterns.Strategy;
 using MojsAjsli.Services;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// ViewModel odpowiedzialny za płatności (SRP)
@@ -172,7 +172,7 @@ public class PaymentViewModel : BaseViewModel
                 _addNotification($"Płatność {finalPrice:N2} zł - {payment.Type} (#{payment.TransactionId})");
                 
                 OnPaymentCompleted?.Invoke();
-                OnPaymentSuccess?.Invoke(finalPrice, payment.Type.ToString(), payment.TransactionId);
+                OnPaymentSuccess?.Invoke(finalPrice, payment.Type.ToString(), payment.TransactionId ?? "BRAK");
             }
             else
             {

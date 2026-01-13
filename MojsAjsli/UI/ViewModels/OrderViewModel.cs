@@ -8,7 +8,7 @@ using MojsAjsli.Patterns.Strategy;
 using MojsAjsli.Services;
 using MojsAjsli.Services.Interfaces.Dishes;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// ViewModel odpowiedzialny za zarządzanie zamówieniami (SRP)

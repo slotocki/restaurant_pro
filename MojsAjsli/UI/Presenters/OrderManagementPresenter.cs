@@ -6,7 +6,7 @@ using MojsAjsli.Services;
 using MojsAjsli.Services.Interfaces;
 using MojsAjsli.Services.Interfaces.Dishes;
 
-namespace MojsAjsli.Presenters;
+namespace MojsAjsli.UI.Presenters;
 
 /// <summary>
 /// Presenter do zarządzania zamówieniami - SRP (Single Responsibility Principle)

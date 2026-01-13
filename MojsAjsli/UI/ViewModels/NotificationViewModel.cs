@@ -1,7 +1,7 @@
 ﻿using System.Collections.ObjectModel;
 using MojsAjsli.Patterns.Observer;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// ViewModel odpowiedzialny za powiadomienia (SRP)

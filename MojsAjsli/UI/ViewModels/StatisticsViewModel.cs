@@ -1,6 +1,6 @@
 ﻿using MojsAjsli.Services;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// ViewModel odpowiedzialny za statystyki (SRP)
@@ -87,4 +87,3 @@ public class StatisticsViewModel : BaseViewModel
         ActiveStrategy = (now.Hour >= 15 && now.Hour < 18) ? "Happy Hour aktywne!" : "";
     }
 }
-

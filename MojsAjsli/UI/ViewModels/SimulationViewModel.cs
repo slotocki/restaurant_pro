@@ -2,7 +2,7 @@
 using System.Windows.Input;
 using MojsAjsli.Services;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// ViewModel odpowiedzialny za symulację (SRP)

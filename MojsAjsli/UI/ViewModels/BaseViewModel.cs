@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel;
 using System.Runtime.CompilerServices;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// Bazowa klasa dla wszystkich ViewModeli implementująca INotifyPropertyChanged
@@ -25,4 +25,3 @@ public abstract class BaseViewModel : INotifyPropertyChanged
         return true;
     }
 }
-

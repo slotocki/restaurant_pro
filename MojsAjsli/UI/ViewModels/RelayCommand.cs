@@ -1,6 +1,6 @@
 ﻿using System.Windows.Input;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// Implementacja ICommand dla MVVM
@@ -33,4 +33,3 @@ public class RelayCommand : ICommand
 
     public void RaiseCanExecuteChanged() => CommandManager.InvalidateRequerySuggested();
 }
-

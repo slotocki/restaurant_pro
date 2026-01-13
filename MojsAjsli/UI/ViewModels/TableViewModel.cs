@@ -3,7 +3,7 @@ using System.Windows.Input;
 using MojsAjsli.Models;
 using MojsAjsli.Services;
 
-namespace MojsAjsli.ViewModels;
+namespace MojsAjsli.UI.ViewModels;
 
 /// <summary>
 /// ViewModel odpowiedzialny za zarządzanie stolikami (SRP)

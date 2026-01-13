@@ -1,4 +1,4 @@
-﻿namespace MojsAjsli.Formatters;
+﻿namespace MojsAjsli.UI.Formatters;
 
 /// <summary>
 /// Interfejs do formatowania tekstu - ISP (Interface Segregation Principle)

@@ -97,7 +97,7 @@ public class MenuService : IMenuService
 
     #region Kompatybilność wsteczna
 
-    [Obsolete("Użyj CreateDishWithExtras z IEnumerable<DishExtra> zamiast parametrów bool")]
+    
     public IDish CreateDishWithExtras(MenuItem menuItem, bool extraCheese = false, bool bacon = false,
         bool spicySauce = false, bool glutenFree = false, bool extraPortion = false, bool veganOption = false)
     {

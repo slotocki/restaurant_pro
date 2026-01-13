@@ -113,6 +113,28 @@ public class MenuService : IMenuService
 
 ```
 MojsAjsli/
+├── UI/                                    # Warstwa prezentacji
+│   ├── Views/
+│   │   ├── MainWindow.xaml
+│   │   └── MainWindow.xaml.cs
+│   ├── ViewModels/
+│   │   ├── BaseViewModel.cs
+│   │   ├── MainViewModel.cs
+│   │   ├── TableViewModel.cs
+│   │   ├── OrderViewModel.cs
+│   │   ├── KitchenViewModel.cs
+│   │   ├── PaymentViewModel.cs
+│   │   ├── StatisticsViewModel.cs
+│   │   ├── SimulationViewModel.cs
+│   │   ├── NotificationViewModel.cs
+│   │   └── RelayCommand.cs
+│   ├── Presenters/
+│   │   ├── TableManagementPresenter.cs
+│   │   └── OrderManagementPresenter.cs
+│   ├── Formatters/
+│   │   └── ITextFormatter.cs
+│   ├── Converters/
+│   └── Resources/
 ├── Services/
 │   ├── Interfaces/
 │   │   ├── Menu/
@@ -138,9 +160,8 @@ MojsAjsli/
 │   ├── Observer/
 │   ├── State/
 │   └── Strategy/
-├── Presenters/
-├── Formatters/
-└── Models/
+├── Models/
+└── Documentation/
 ```
 
 ## 🎯 Podsumowanie korzyści
