@@ -1,10 +1,14 @@
 ﻿using MojsAjsli.Models;
 using MojsAjsli.Patterns.Decorator;
 using MojsAjsli.Patterns.Iterator;
+using MojsAjsli.Services.Interfaces;
 
 namespace MojsAjsli.Services;
-
-public class MenuService
+/// <summary>
+/// Implementacja IMenuService - DIP (Dependency Inversion Principle)
+/// Singleton - zapewnia pojedynczą instancję w aplikacji
+/// </summary>
+public class MenuService : IMenuService
 {
     private static MenuService? _instance;
     private static readonly object _lock = new();

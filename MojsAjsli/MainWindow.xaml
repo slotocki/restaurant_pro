@@ -6,7 +6,7 @@
         xmlns:local="clr-namespace:MojsAjsli"
         xmlns:converters="clr-namespace:MojsAjsli.UI.Converters"
         mc:Ignorable="d"
-        Title="🌵 Mojs Ajsli - Kantyna na Rubieżach" 
+        Title="Mojs Ajsli - Kantyna na Rubieżach" 
         Height="900" Width="1600"
         WindowStartupLocation="CenterScreen"
         WindowState="Maximized"
@@ -44,7 +44,7 @@
                 </Grid.ColumnDefinitions>
                 
                 <StackPanel Grid.Column="0" Orientation="Horizontal">
-                    <TextBlock Text="🍽️" FontSize="28" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                    <Image Source="pack://siteoforigin:,,,/logoa.png" Height="80" Margin="0,0,15,0" VerticalAlignment="Center"/>
                     <TextBlock Text="Mojs Ajsli" FontSize="24" FontWeight="Bold" 
                                Foreground="White" VerticalAlignment="Center"/>
                 </StackPanel>
@@ -62,7 +62,7 @@
         <TabControl Grid.Row="1" Margin="10">
             
             <!-- Tab: Sala restauracyjna -->
-            <TabItem Header="🏠 Sala">
+            <TabItem Header="Sala">
                 <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="2*"/>
@@ -122,7 +122,7 @@
                                             <TextBlock Text="1" FontSize="18" FontWeight="Bold" Foreground="White" 
                                                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
                                         </Border>
-                                        <Border x:Name="Guest2Tile" Background="#5D4037" CornerRadius="8" Padding="15,10" Margin="5"
+                                        <Border x:Name="Guest2Tile" Background="#8D6E63" CornerRadius="8" Padding="15,10" Margin="5"
                                                 Width="60" Height="60" Cursor="Hand" MouseLeftButtonUp="GuestCountTile_Click" Tag="2">
                                             <Border.Effect>
                                                 <DropShadowEffect BlurRadius="5" ShadowDepth="2" Opacity="0.3"/>
@@ -275,11 +275,11 @@
                                             </DataTemplate>
                                         </ItemsControl.ItemTemplate>
                                     </ItemsControl>
-                                    
+
                                     <!-- Lista dań w wybranej kategorii -->
-                                    <TextBlock x:Name="SelectedCategoryText" Text="Wszystkie dania" 
+                                    <TextBlock x:Name="SelectedCategoryText" Text="Wszystkie dania"
                                                FontWeight="SemiBold" Margin="0,10,0,5"/>
-                                    <ListBox x:Name="MenuListBox" Height="300" 
+                                    <ListBox x:Name="MenuListBox" Height="300"
                                              Style="{StaticResource ModernListBox}"
                                              ItemContainerStyle="{StaticResource ModernListBoxItem}">
                                         <ListBox.ItemTemplate>
@@ -290,7 +290,7 @@
                                                         <ColumnDefinition Width="*"/>
                                                         <ColumnDefinition Width="Auto"/>
                                                     </Grid.ColumnDefinitions>
-                                                    <TextBlock Grid.Column="0" 
+                                                    <TextBlock Grid.Column="0"
                                                                Text="{Binding Category, Converter={StaticResource CategoryToIconConverter}}"
                                                                FontSize="18" Margin="0,0,8,0"/>
                                                     <StackPanel Grid.Column="1">
@@ -298,7 +298,7 @@
                                                         <TextBlock Text="{Binding Description}" FontSize="10" 
                                                                    Foreground="Gray" TextWrapping="Wrap"/>
                                                     </StackPanel>
-                                                    <TextBlock Grid.Column="2" 
+                                                    <TextBlock Grid.Column="2"
                                                                Text="{Binding BasePrice, Converter={StaticResource PriceConverter}}"
                                                                FontWeight="Bold" Foreground="#4CAF50" FontSize="13"/>
                                                 </Grid>
@@ -390,202 +390,194 @@
                 </Grid>
             </TabItem>
             
-            <!-- Tab: Kuchnia -->
-            <TabItem Header="👨‍🍳 Kuchnia">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
+            <!-- Tab: Kuchnia i Kelner -->
+            <TabItem Header="Kuchnia i Kelner">
+                <Grid Margin="10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
                     
-                    <!-- Kolejka zamówień -->
-                    <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="5">
+                    <!-- Sekcja Kuchni -->
+                    <Border Grid.Row="0" Style="{StaticResource CardStyle}" Margin="5">
                         <StackPanel>
-                            <TextBlock Text="📋 Kolejka zamówień" Style="{StaticResource HeaderStyle}"/>
-                            <TextBlock x:Name="QueueCountText" Foreground="Gray" Margin="0,0,0,10"/>
+                            <TextBlock Text="Kuchnia" Style="{StaticResource HeaderStyle}"/>
                             
-                            <ListBox x:Name="KitchenQueueListBox" Height="400"
-                                     Style="{StaticResource ModernListBox}"
-                                     ItemContainerStyle="{StaticResource ModernListBoxItem}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="5">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0">
-                                                    <TextBlock FontWeight="Bold">
-                                                        <Run Text="Zamówienie #"/>
-                                                        <Run Text="{Binding Id, Mode=OneWay}"/>
-                                                        <Run Text=" - Stolik "/>
-                                                        <Run Text="{Binding TableNumber}"/>
-                                                    </TextBlock>
-                                                    <TextBlock Text="{Binding CreatedAt, StringFormat='Złożone: {0:HH:mm}'}" 
-                                                               FontSize="11" Foreground="Gray"/>
-                                                    <TextBlock Text="{Binding EstimatedTime, StringFormat='Czas przygotowania: ~{0} min'}" 
-                                                               FontSize="11" Foreground="Gray"/>
-                                                </StackPanel>
-                                                <Border Grid.Column="1" 
-                                                        Background="{Binding StateName, Converter={StaticResource OrderStateToColorConverter}}"
-                                                        CornerRadius="3" Padding="8,4">
-                                                    <TextBlock Text="{Binding StateName}" Foreground="White" FontSize="11"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- Kolejka zamówień -->
+                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                    <TextBlock Text="Kolejka zamówień" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,5"/>
+                                    <TextBlock x:Name="QueueCountText" Foreground="Gray" FontSize="11" Margin="0,0,0,5"/>
+                                    
+                                    <ListBox x:Name="KitchenQueueListBox" Height="180"
+                                             Style="{StaticResource ModernListBox}"
+                                             ItemContainerStyle="{StaticResource ModernListBoxItem}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border BorderBrush="#E0E0E0" BorderThickness="0,0,0,1" Padding="3">
+                                                    <StackPanel>
+                                                        <TextBlock FontWeight="Bold" FontSize="11">
+                                                            <Run Text="Stolik "/>
+                                                            <Run Text="{Binding TableNumber}"/>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding TotalPrice, StringFormat='Wartość: {0:N2} zł'}" 
+                                                                   FontSize="10" Foreground="Gray"/>
+                                                    </StackPanel>
                                                 </Border>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            
-                            <Button Content="▶️ Rozpocznij przygotowanie" Style="{StaticResource PrimaryButton}"
-                                    Click="StartPreparing_Click" Margin="0,10,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    
-                    <!-- W przygotowaniu -->
-                    <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="5">
-                        <StackPanel>
-                            <TextBlock Text="🔥 W przygotowaniu" Style="{StaticResource HeaderStyle}"/>
-                            <TextBlock x:Name="PreparingCountText" Foreground="Gray" Margin="0,0,0,10"/>
-                            
-                            <ListBox x:Name="PreparingListBox" Height="400"
-                                     Style="{StaticResource ModernListBox}"
-                                     ItemContainerStyle="{StaticResource ModernListBoxItem}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="#FFF3E0" CornerRadius="5" Padding="10">
-                                            <StackPanel>
-                                                <TextBlock FontWeight="Bold" FontSize="16">
-                                                    <Run Text="🍳 Zamówienie #"/>
-                                                    <Run Text="{Binding Id, Mode=OneWay}"/>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding TableNumber, StringFormat='Stolik: {0}'}" Margin="0,5,0,0"/>
-                                                <ItemsControl ItemsSource="{Binding Items}" Margin="0,5,0,0">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <TextBlock FontSize="12">
-                                                                <Run Text="• "/>
-                                                                <Run Text="{Binding Description, Mode=OneWay}"/>
-                                                            </TextBlock>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            
-                            <Button Content="✅ Oznacz jako gotowe" Style="{StaticResource SuccessButton}"
-                                    Click="MarkReady_Click" Margin="0,10,0,0"/>
-                        </StackPanel>
-                    </Border>
-                </Grid>
-            </TabItem>
-            
-            <!-- Tab: Kelner -->
-            <TabItem Header="🧑‍🍳 Kelner">
-                <Grid>
-                    <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="*"/>
-                        <ColumnDefinition Width="*"/>
-                    </Grid.ColumnDefinitions>
-                    
-                    <!-- Zamówienia gotowe do wydania -->
-                    <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="5">
-                        <StackPanel>
-                            <TextBlock Text="✅ Gotowe do wydania" Style="{StaticResource HeaderStyle}"/>
-                            
-                            <ListBox x:Name="ReadyOrdersListBox" Height="450"
-                                     Style="{StaticResource ModernListBox}"
-                                     ItemContainerStyle="{StaticResource ModernListBoxItem}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="#E8F5E9" CornerRadius="5" Padding="10">
-                                            <StackPanel>
-                                                <TextBlock FontWeight="Bold" FontSize="16">
-                                                    <Run Text="🔔 Zamówienie #"/>
-                                                    <Run Text="{Binding Id, Mode=OneWay}"/>
-                                                </TextBlock>
-                                                <TextBlock Text="{Binding TableNumber, StringFormat='➡️ Stolik: {0}'}" 
-                                                           FontSize="14" Margin="0,5,0,0"/>
-                                                <TextBlock Text="{Binding TotalPrice, Converter={StaticResource PriceConverter}}" 
-                                                           FontWeight="Bold" Foreground="#4CAF50"/>
-                                            </StackPanel>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            
-                            <Button Content="🚀 Dostarcz zamówienie" Style="{StaticResource SuccessButton}"
-                                    Click="DeliverOrder_Click" Margin="0,10,0,0"/>
-                        </StackPanel>
-                    </Border>
-                    
-                    <!-- Zamówienia dostarczone (do opłacenia) -->
-                    <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="5">
-                        <StackPanel>
-                            <TextBlock Text="💰 Do opłacenia" Style="{StaticResource HeaderStyle}"/>
-                            
-                            <ListBox x:Name="DeliveredOrdersListBox" Height="300"
-                                     Style="{StaticResource ModernListBox}"
-                                     ItemContainerStyle="{StaticResource ModernListBoxItem}">
-                                <ListBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <Border Background="#FFF8E1" CornerRadius="5" Padding="10">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="*"/>
-                                                    <ColumnDefinition Width="Auto"/>
-                                                </Grid.ColumnDefinitions>
-                                                <StackPanel Grid.Column="0">
-                                                    <TextBlock FontWeight="Bold">
-                                                        <Run Text="Zamówienie #"/>
-                                                        <Run Text="{Binding Id, Mode=OneWay}"/>
-                                                    </TextBlock>
-                                                    <TextBlock Text="{Binding TableNumber, StringFormat='Stolik: {0}'}"/>
-                                                </StackPanel>
-                                                <TextBlock Grid.Column="1" Text="{Binding TotalPrice, Converter={StaticResource PriceConverter}}"
-                                                           FontWeight="Bold" FontSize="16" Foreground="#FF9800"/>
-                                            </Grid>
-                                        </Border>
-                                    </DataTemplate>
-                                </ListBox.ItemTemplate>
-                            </ListBox>
-                            
-                            <!-- Strategia cenowa -->
-                            <TextBlock Text="Strategia cenowa:" FontWeight="SemiBold" Margin="0,15,0,5"/>
-                            <ComboBox x:Name="PricingStrategyComboBox" Style="{StaticResource ModernComboBox}"
-                                      SelectionChanged="PricingStrategy_Changed"/>
-                            
-                            <!-- Metoda płatności -->
-                            <TextBlock Text="Metoda płatności:" FontWeight="SemiBold" Margin="0,10,0,5"/>
-                            <ComboBox x:Name="PaymentMethodComboBox" Style="{StaticResource ModernComboBox}"/>
-                            
-
-                            <StackPanel x:Name="BlikPanel" Visibility="Collapsed" Margin="0,5,0,0">
-                                <TextBlock Text="Kod BLIK:" FontSize="12"/>
-                                <TextBox x:Name="BlikCodeTextBox" Style="{StaticResource ModernTextBox}" 
-                                         MaxLength="6"/>
-                            </StackPanel>
-                            
-                            <Border Background="#E8F5E9" CornerRadius="5" Padding="10" Margin="0,10,0,0">
-                                <StackPanel>
-                                    <TextBlock x:Name="PaymentSummaryText" FontWeight="Bold"/>
-                                    <TextBlock x:Name="PaymentDiscountText" FontSize="12" Foreground="Gray"/>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    
+                                    <Button Content="Rozpocznij przygotowanie" Style="{StaticResource PrimaryButton}"
+                                            Click="StartPreparing_Click" Margin="0,5,0,0" Padding="10,5" FontSize="12"/>
                                 </StackPanel>
-                            </Border>
+                                
+                                <!-- W przygotowaniu -->
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                    <TextBlock Text="W przygotowaniu" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,5"/>
+                                    <TextBlock x:Name="PreparingCountText" Foreground="Gray" FontSize="11" Margin="0,0,0,5"/>
+                                    
+                                    <ListBox x:Name="PreparingListBox" Height="180"
+                                             Style="{StaticResource ModernListBox}"
+                                             ItemContainerStyle="{StaticResource ModernListBoxItem}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#FFF3E0" CornerRadius="5" Padding="8">
+                                                    <StackPanel>
+                                                        <TextBlock FontWeight="Bold" FontSize="12">
+                                                            <Run Text="Stolik "/>
+                                                            <Run Text="{Binding TableNumber}"/>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding TotalPrice, StringFormat='Wartość: {0:N2} zł'}" 
+                                                                   FontSize="10" Foreground="Gray" Margin="0,3,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    
+                                    <Button Content="Oznacz jako gotowe" Style="{StaticResource SuccessButton}"
+                                            Click="MarkReady_Click" Margin="0,5,0,0" Padding="10,5" FontSize="12"/>
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+                    
+                    <!-- Sekcja Kelnera -->
+                    <Border Grid.Row="1" Style="{StaticResource CardStyle}" Margin="5">
+                        <StackPanel>
+                            <TextBlock Text="Kelner" Style="{StaticResource HeaderStyle}"/>
                             
-                            <Button Content="💳 Przyjmij płatność" Style="{StaticResource SuccessButton}"
-                                    Click="ProcessPayment_Click" Margin="0,10,0,0"/>
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                
+                                <!-- Zamówienia gotowe do wydania -->
+                                <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                    <TextBlock Text="Gotowe do wydania" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,5"/>
+                                    
+                                    <ListBox x:Name="ReadyOrdersListBox" Height="180"
+                                             Style="{StaticResource ModernListBox}"
+                                             ItemContainerStyle="{StaticResource ModernListBoxItem}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#E8F5E9" CornerRadius="5" Padding="8">
+                                                    <StackPanel>
+                                                        <TextBlock FontWeight="Bold" FontSize="12">
+                                                            <Run Text="Stolik "/>
+                                                            <Run Text="{Binding TableNumber}"/>
+                                                        </TextBlock>
+                                                        <TextBlock Text="{Binding TotalPrice, StringFormat='Wartość: {0:N2} zł'}" 
+                                                                   FontWeight="Bold" Foreground="#4CAF50" FontSize="11" Margin="0,3,0,0"/>
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    
+                                    <Button Content="Dostarcz zamówienie" Style="{StaticResource SuccessButton}"
+                                            Click="DeliverOrder_Click" Margin="0,5,0,0" Padding="10,5" FontSize="12"/>
+                                </StackPanel>
+                                
+                                <!-- Zamówienia dostarczone (do opłacenia) -->
+                                <StackPanel Grid.Column="1" Margin="10,0,0,0">
+                                    <TextBlock Text="Do opłacenia" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,5"/>
+                                    
+                                    <ListBox x:Name="DeliveredOrdersListBox" Height="100"
+                                             Style="{StaticResource ModernListBox}"
+                                             ItemContainerStyle="{StaticResource ModernListBoxItem}">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Background="#FFF8E1" CornerRadius="5" Padding="6">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*"/>
+                                                            <ColumnDefinition Width="Auto"/>
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel Grid.Column="0">
+                                                            <TextBlock FontWeight="Bold" FontSize="11">
+                                                                <Run Text="Stolik "/>
+                                                                <Run Text="{Binding TableNumber}"/>
+                                                            </TextBlock>
+                                                        </StackPanel>
+                                                        <TextBlock Grid.Column="1" Text="{Binding TotalPrice, StringFormat='{}{0:N2} zł'}"
+                                                                   FontWeight="Bold" FontSize="12" Foreground="#FF9800"/>
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    
+                                    <!-- Strategia cenowa i płatność skompresowane -->
+                                    <Grid Margin="0,5,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="*"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <StackPanel Grid.Column="0" Margin="0,0,5,0">
+                                            <TextBlock Text="Strategia:" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,3"/>
+                                            <ComboBox x:Name="PricingStrategyComboBox" Style="{StaticResource ModernComboBox}"
+                                                      SelectionChanged="PricingStrategy_Changed" FontSize="11" Padding="6,4"/>
+                                        </StackPanel>
+                                        
+                                        <StackPanel Grid.Column="1" Margin="5,0,0,0">
+                                            <TextBlock Text="Płatność:" FontWeight="SemiBold" FontSize="11" Margin="0,0,0,3"/>
+                                            <ComboBox x:Name="PaymentMethodComboBox" Style="{StaticResource ModernComboBox}" FontSize="11" Padding="6,4"/>
+                                        </StackPanel>
+                                    </Grid>
+                                    
+                                    <StackPanel x:Name="BlikPanel" Visibility="Collapsed" Margin="0,3,0,0">
+                                        <TextBlock Text="Kod BLIK:" FontSize="10"/>
+                                        <TextBox x:Name="BlikCodeTextBox" Style="{StaticResource ModernTextBox}" 
+                                                 MaxLength="6" FontSize="11" Padding="6,4"/>
+                                    </StackPanel>
+                                    
+                                    <Border Background="#E8F5E9" CornerRadius="5" Padding="8" Margin="0,5,0,0">
+                                        <StackPanel>
+                                            <TextBlock x:Name="PaymentSummaryText" FontWeight="Bold" FontSize="12"/>
+                                            <TextBlock x:Name="PaymentDiscountText" FontSize="10" Foreground="Gray"/>
+                                        </StackPanel>
+                                    </Border>
+                                    
+                                    <Button Content="💳 Przyjmij płatność" Style="{StaticResource SuccessButton}"
+                                            Click="ProcessPayment_Click" Margin="0,5,0,0" Padding="10,5" FontSize="12"/>
+                                </StackPanel>
+                            </Grid>
                         </StackPanel>
                     </Border>
                 </Grid>
             </TabItem>
             
             <!-- Tab: Statystyki -->
-            <TabItem Header="📊 Statystyki">
+            <TabItem Header="Statystyki">
                 <ScrollViewer>
                     <Grid Margin="10">
                         <Grid.ColumnDefinitions>
@@ -596,37 +588,39 @@
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
                             <RowDefinition Height="*"/>
                         </Grid.RowDefinitions>
-                        
+
                         <!-- Przychód dzienny -->
                         <Border Grid.Column="0" Grid.Row="0" Style="{StaticResource CardStyle}">
                             <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="💰 Przychód dzienny" FontSize="14" Foreground="Gray" 
+                                <TextBlock Text="💰 Przychód dzienny" FontSize="14" Foreground="Gray"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock x:Name="DailyRevenueText" Text="0,00 zł" 
+                                <TextBlock x:Name="DailyRevenueText" Text="0,00 zł"
                                            FontSize="32" FontWeight="Bold" Foreground="#4CAF50"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        
+
                         <!-- Liczba zamówień -->
                         <Border Grid.Column="1" Grid.Row="0" Style="{StaticResource CardStyle}">
                             <StackPanel HorizontalAlignment="Center">
                                 <TextBlock Text="📦 Zamówienia dziś" FontSize="14" Foreground="Gray"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock x:Name="TodayOrdersText" Text="0" 
+                                <TextBlock x:Name="TodayOrdersText" Text="0"
                                            FontSize="32" FontWeight="Bold" Foreground="#2196F3"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
                         </Border>
-                        
+
                         <!-- Średnia wartość -->
                         <Border Grid.Column="2" Grid.Row="0" Style="{StaticResource CardStyle}">
                             <StackPanel HorizontalAlignment="Center">
                                 <TextBlock Text="📈 Średnia zamówienia" FontSize="14" Foreground="Gray"
                                            HorizontalAlignment="Center"/>
-                                <TextBlock x:Name="AverageOrderText" Text="0,00 zł" 
+                                <TextBlock x:Name="AverageOrderText" Text="0,00 zł"
                                            FontSize="32" FontWeight="Bold" Foreground="#FF9800"
                                            HorizontalAlignment="Center"/>
                             </StackPanel>
@@ -641,7 +635,7 @@
                                 <TextBlock x:Name="TotalSeatsText" FontSize="14"/>
                             </StackPanel>
                         </Border>
-                        
+
                         <!-- Kuchnia -->
                         <Border Grid.Column="1" Grid.Row="1" Style="{StaticResource CardStyle}">
                             <StackPanel>
@@ -652,35 +646,189 @@
                             </StackPanel>
                         </Border>
                         
-                        <!-- Popularne dania -->
+                        <!-- Symulacja - Panel kontrolny -->
                         <Border Grid.Column="2" Grid.Row="1" Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="⭐ Popularne dania" Style="{StaticResource SubHeaderStyle}"/>
-                                <ListBox x:Name="TopDishesListBox" BorderThickness="0" Height="150">
-                                    <ListBox.ItemTemplate>
-                                        <DataTemplate>
-                                            <TextBlock>
-                                                <Run Text="{Binding Item1}"/>
-                                                <Run Text=" - "/>
-                                                <Run Text="{Binding Item2}" FontWeight="Bold"/>
-                                                <Run Text=" szt."/>
-                                            </TextBlock>
-                                        </DataTemplate>
-                                    </ListBox.ItemTemplate>
-                                </ListBox>
+                                <TextBlock Text="🎮 Symulacja restauracji" Style="{StaticResource SubHeaderStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                                    <TextBlock Text="Czas (min):" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <TextBox x:Name="SimulationDurationTextBox" Width="60" Text="120"
+                                             VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
+                                    <TextBlock Text="Prędkość (ms):" VerticalAlignment="Center" Margin="0,0,10,0"/>
+                                    <ComboBox x:Name="SimulationSpeedComboBox" Width="100">
+                                        <ComboBoxItem Content="Szybka (100ms)" Tag="100"/>
+                                        <ComboBoxItem Content="Normalna (500ms)" Tag="500" IsSelected="True"/>
+                                        <ComboBoxItem Content="Wolna (1000ms)" Tag="1000"/>
+                                        <ComboBoxItem Content="Bardzo wolna (2000ms)" Tag="2000"/>
+                                    </ComboBox>
+                                </StackPanel>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button x:Name="RunSimulationButton" Content="▶ Start"
+                                            Background="#4CAF50" Foreground="White" Padding="15,8"
+                                            Margin="0,5,5,0" BorderThickness="0" FontSize="14"
+                                            Cursor="Hand" Click="RunSimulation_Click">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" CornerRadius="5" 
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                    <Button x:Name="StopSimulationButton" Content="⏹ Stop"
+                                            Background="#F44336" Foreground="White" Padding="15,8"
+                                            Margin="5,5,0,0" BorderThickness="0" FontSize="14"
+                                            Cursor="Hand" Click="StopSimulation_Click" IsEnabled="False">
+                                        <Button.Template>
+                                            <ControlTemplate TargetType="Button">
+                                                <Border Background="{TemplateBinding Background}" CornerRadius="5" 
+                                                        Padding="{TemplateBinding Padding}">
+                                                    <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                </Border>
+                                            </ControlTemplate>
+                                        </Button.Template>
+                                    </Button>
+                                </StackPanel>
+                                <TextBlock x:Name="SimStatusText" Text="Gotowa do uruchomienia"
+                                           FontSize="11" Foreground="Gray" Margin="0,5,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
-                        
-                        <!-- Log powiadomień -->
-                        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2" 
+
+                        <!-- Edytor parametrów symulacji -->
+                        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2"
                                 Style="{StaticResource CardStyle}" Margin="5,10,5,5">
                             <StackPanel>
-                                <TextBlock Text="📝 Log powiadomień" Style="{StaticResource SubHeaderStyle}"/>
-                                <ListBox x:Name="NotificationLogListBox" Height="200"
+                                <TextBlock Text="⚙️ Parametry symulacji" Style="{StaticResource SubHeaderStyle}"/>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Częstotliwość klientów -->
+                                    <StackPanel Grid.Column="0" Margin="5">
+                                        <TextBlock Text="Częstotliwość klientów" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Min interwał (min):" FontSize="11" VerticalAlignment="Center" Width="100"/>
+                                            <TextBox x:Name="MinArrivalTextBox" Width="50" Text="5" 
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Max interwał (min):" FontSize="11" VerticalAlignment="Center" Width="100"/>
+                                            <TextBox x:Name="MaxArrivalTextBox" Width="50" Text="25" 
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    
+                                    <!-- Rozmiar grup -->
+                                    <StackPanel Grid.Column="1" Margin="5">
+                                        <TextBlock Text="Rozmiar grup gości" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Min osób:" FontSize="11" VerticalAlignment="Center" Width="100"/>
+                                            <TextBox x:Name="MinGroupSizeTextBox" Width="50" Text="1" 
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Max osób:" FontSize="11" VerticalAlignment="Center" Width="100"/>
+                                            <TextBox x:Name="MaxGroupSizeTextBox" Width="50" Text="8" 
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    
+                                    <!-- Cierpliwość klientów -->
+                                    <StackPanel Grid.Column="2" Margin="5">
+                                        <TextBlock Text="Cierpliwość klientów" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Min oczekiwanie:" FontSize="11" VerticalAlignment="Center" Width="100"/>
+                                            <TextBox x:Name="MinWaitTimeTextBox" Width="50" Text="5" 
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Max oczekiwanie:" FontSize="11" VerticalAlignment="Center" Width="100"/>
+                                            <TextBox x:Name="MaxWaitTimeTextBox" Width="50" Text="15" 
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    
+                                    <!-- Kuchnia -->
+                                    <StackPanel Grid.Column="3" Margin="5">
+                                        <TextBlock Text="Wydajność kuchni" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Równoległe zamówienia:" FontSize="11" VerticalAlignment="Center" Width="120"/>
+                                            <TextBox x:Name="MaxConcurrentOrdersTextBox" Width="50" Text="3" 
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <Button Content="Zastosuj parametry" Background="#2196F3" Foreground="White"
+                                                Padding="10,5" Margin="0,10,0,0" BorderThickness="0" FontSize="11"
+                                                Cursor="Hand" Click="ApplySimulationParams_Click">
+                                            <Button.Template>
+                                                <ControlTemplate TargetType="Button">
+                                                    <Border Background="{TemplateBinding Background}" CornerRadius="5" 
+                                                            Padding="{TemplateBinding Padding}">
+                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                                    </Border>
+                                                </ControlTemplate>
+                                            </Button.Template>
+                                        </Button>
+                                    </StackPanel>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Wyniki symulacji -->
+                        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="3"
+                                Style="{StaticResource CardStyle}" Margin="5,10,5,5">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                    <ColumnDefinition Width="*"/>
+                                </Grid.ColumnDefinitions>
+                                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
+                                    <TextBlock Text="👥 Obsłużeni" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="SimServedText" Text="0" FontSize="24" FontWeight="Bold" 
+                                               Foreground="#4CAF50" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
+                                    <TextBlock Text="😞 Utraceni" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="SimLostText" Text="0" FontSize="24" FontWeight="Bold" 
+                                               Foreground="#F44336" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
+                                    <TextBlock Text="💰 Przychód" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="SimRevenueText" Text="0 zł" FontSize="24" FontWeight="Bold" 
+                                               Foreground="#FF9800" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="3" HorizontalAlignment="Center">
+                                    <TextBlock Text="📊 Skuteczność" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="SimServiceRateText" Text="0%" FontSize="24" FontWeight="Bold" 
+                                               Foreground="#2196F3" HorizontalAlignment="Center"/>
+                                </StackPanel>
+                                <StackPanel Grid.Column="4" HorizontalAlignment="Center">
+                                    <TextBlock Text="🍽️ Top danie" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
+                                    <TextBlock x:Name="SimTopDishText" Text="-" FontSize="14" FontWeight="Bold" 
+                                               Foreground="#9C27B0" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                                </StackPanel>
+                            </Grid>
+                        </Border>
+
+                        <!-- Log symulacji -->
+                        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="4"
+                                Style="{StaticResource CardStyle}" Margin="5,10,5,5">
+                            <StackPanel>
+                                <TextBlock Text="📝 Log symulacji" Style="{StaticResource SubHeaderStyle}"/>
+                                <ListBox x:Name="SimulationLogListBox" Height="250"
                                          Style="{StaticResource ModernListBox}">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
-                                            <TextBlock Text="{Binding}" FontSize="12"/>
+                                            <TextBlock Text="{Binding}" FontSize="11" FontFamily="Consolas"/>
                                         </DataTemplate>
                                     </ListBox.ItemTemplate>
                                 </ListBox>
@@ -691,14 +839,14 @@
             </TabItem>
             
             <!-- Tab: O wzorcach -->
-            <TabItem Header="ℹ️ Wzorce">
+            <TabItem Header="Wzorce">
                 <ScrollViewer>
                     <StackPanel Margin="20">
                         <TextBlock Text="Wykorzystane wzorce projektowe" Style="{StaticResource HeaderStyle}"/>
                         
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="1. STATE (Stan) ⭐⭐⭐" FontWeight="Bold" FontSize="16" Foreground="#2196F3"/>
+                                <TextBlock Text="1. STATE (Stan)" FontWeight="Bold" FontSize="16" Foreground="#2196F3"/>
                                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
                                     Zamówienie przechodzi przez cykl życia: Nowe → Przyjęte → W przygotowaniu → Gotowe → Dostarczone → Opłacone.
                                     Każdy stan ma inne dozwolone akcje.
@@ -708,7 +856,7 @@
                         
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="2. STRATEGY (Strategia) ⭐⭐⭐" FontWeight="Bold" FontSize="16" Foreground="#4CAF50"/>
+                                <TextBlock Text="2. STRATEGY (Strategia)" FontWeight="Bold" FontSize="16" Foreground="#4CAF50"/>
                                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
                                     Różne strategie cenowe: RegularPricing, HappyHour (-30%), LoyaltyCard (-15%), GroupDiscount (-10%), StudentDiscount (-20%).
                                 </TextBlock>
@@ -717,7 +865,7 @@
                         
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="3. MEDIATOR ⭐⭐⭐" FontWeight="Bold" FontSize="16" Foreground="#FF9800"/>
+                                <TextBlock Text="3. MEDIATOR" FontWeight="Bold" FontSize="16" Foreground="#FF9800"/>
                                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
                                     RestaurantMediator koordynuje komunikację między Kelnerem, Kuchnią i Kasą. Komponenty nie znają się nawzajem!
                                 </TextBlock>
@@ -726,7 +874,7 @@
                         
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="4. MEMENTO (Pamiątka) ⭐⭐" FontWeight="Bold" FontSize="16" Foreground="#9C27B0"/>
+                                <TextBlock Text="4. MEMENTO (Pamiątka)" FontWeight="Bold" FontSize="16" Foreground="#9C27B0"/>
                                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
                                     Undo/Redo zamówień. Każda modyfikacja zamówienia zapisuje snapshot, który można przywrócić.
                                 </TextBlock>
@@ -735,7 +883,7 @@
                         
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="5. DECORATOR (Dekorator) ⭐⭐⭐" FontWeight="Bold" FontSize="16" Foreground="#E91E63"/>
+                                <TextBlock Text="5. DECORATOR (Dekorator)" FontWeight="Bold" FontSize="16" Foreground="#E91E63"/>
                                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
                                     Dodatki do potraw: ExtraCheese (+3 zł), Bacon (+5 zł), SpicySauce (+2 zł), GlutenFree (+4 zł), ExtraPortion (+50%).
                                 </TextBlock>
@@ -744,25 +892,7 @@
                         
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="6. ADAPTER ⭐⭐" FontWeight="Bold" FontSize="16" Foreground="#00BCD4"/>
-                                <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
-                                    BankPaymentAdapter adaptuje ExternalBankAPI do wspólnego interfejsu IPaymentMethod używanego przez CashPayment, CardPayment, BlikPayment.
-                                </TextBlock>
-                            </StackPanel>
-                        </Border>
-                        
-                        <Border Style="{StaticResource CardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="7. BRIDGE (Most) ⭐" FontWeight="Bold" FontSize="16" Foreground="#795548"/>
-                                <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
-                                    Oddzielenie abstrakcji dania (Pizza, Pasta, Salad) od metody przygotowania (OvenCooking, GrillCooking, SteamCooking).
-                                </TextBlock>
-                            </StackPanel>
-                        </Border>
-                        
-                        <Border Style="{StaticResource CardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="8. OBSERVER (Obserwator) ⭐⭐⭐" FontWeight="Bold" FontSize="16" Foreground="#607D8B"/>
+                                <TextBlock Text="6. OBSERVER (Obserwator)" FontWeight="Bold" FontSize="16" Foreground="#607D8B"/>
                                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
                                     Powiadomienia real-time: Kuchnia, Kelner i UI obserwują zmiany w zamówieniach i reagują na wydarzenia.
                                 </TextBlock>
@@ -771,7 +901,7 @@
                         
                         <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="9. ITERATOR ⭐" FontWeight="Bold" FontSize="16" Foreground="#9E9E9E"/>
+                                <TextBlock Text="7. ITERATOR" FontWeight="Bold" FontSize="16" Foreground="#9E9E9E"/>
                                 <TextBlock TextWrapping="Wrap" Margin="0,5,0,0">
                                     MenuIterator i CategoryIterator pozwalają przeglądać menu - wszystkie dania lub tylko z wybranej kategorii/zakresu cenowego.
                                 </TextBlock>
@@ -784,19 +914,7 @@
         
         <!-- Footer / Status Bar -->
         <Border Grid.Row="2" Background="#4E342E" Padding="15,10">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="Auto"/>
-                    <ColumnDefinition Width="Auto"/>
-                </Grid.ColumnDefinitions>
-                
-                <TextBlock x:Name="StatusText" Grid.Column="0" Foreground="#FFE082" VerticalAlignment="Center"/>
-                <TextBlock x:Name="TablesStatusText" Grid.Column="1" Foreground="#FFCA28" 
-                           VerticalAlignment="Center" Margin="0,0,20,0"/>
-                <TextBlock Text="© 2025 Mojs Ajsli - Kantyna na Rubieżach Galaktyki" Grid.Column="2" 
-                           Foreground="#A1887F" VerticalAlignment="Center"/>
-            </Grid>
+            <!-- Pusty footer -->
         </Border>
     </Grid>
 </Window>

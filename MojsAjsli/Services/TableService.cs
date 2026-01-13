@@ -1,9 +1,13 @@
 ﻿using MojsAjsli.Models;
+using MojsAjsli.Services.Interfaces;
 using System.Collections.ObjectModel;
 
 namespace MojsAjsli.Services;
 
-public class TableService
+/// <summary>
+/// Implementacja ITableService - DIP (Dependency Inversion Principle)
+/// </summary>
+public class TableService : ITableService
 {
     private readonly ObservableCollection<Table> _tables = new();
 
@@ -79,4 +83,3 @@ public class TableService
     public int GetTotalSeats() => _tables.Sum(t => t.Seats);
     public int GetOccupiedSeats() => _tables.Sum(t => t.OccupiedSeats);
 }
-

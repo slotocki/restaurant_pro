@@ -1,5 +1,5 @@
 ﻿using MojsAjsli.Models;
-using MojsAjsli.Patterns.Adapter;
+using MojsAjsli.Payments;
 using MojsAjsli.Patterns.Mediator;
 using MojsAjsli.Patterns.State;
 using MojsAjsli.Patterns.Strategy;
@@ -26,7 +26,7 @@ public class CashierService : IColleague
         _paymentMethods.Add(new CashPayment());
         _paymentMethods.Add(new CardPayment());
         _paymentMethods.Add(new BlikPayment());
-        _paymentMethods.Add(new BankPaymentAdapter("PL12345678901234567890123456"));
+        _paymentMethods.Add(new BankPayment("PL12345678901234567890123456"));
 
         _pricingStrategies.Add(new RegularPricingStrategy());
         _pricingStrategies.Add(new HappyHourStrategy());
@@ -78,7 +78,7 @@ public class CashierService : IColleague
             PaymentType.Cash => _paymentMethods.OfType<CashPayment>().FirstOrDefault(),
             PaymentType.Card => _paymentMethods.OfType<CardPayment>().FirstOrDefault(),
             PaymentType.Blik => GetBlikPayment(blikCode),
-            PaymentType.BankTransfer => _paymentMethods.OfType<BankPaymentAdapter>().FirstOrDefault(),
+            PaymentType.BankTransfer => _paymentMethods.OfType<BankPayment>().FirstOrDefault(),
             _ => null
         };
 
@@ -117,4 +117,3 @@ public class CashierService : IColleague
         return _transactionHistory.Count(p => p.IsSuccessful && p.Timestamp.Date == today);
     }
 }
-

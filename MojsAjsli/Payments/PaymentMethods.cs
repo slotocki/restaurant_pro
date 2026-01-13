@@ -1,4 +1,4 @@
-﻿namespace MojsAjsli.Patterns.Adapter;
+﻿namespace MojsAjsli.Payments;
 
 public class CashPayment : IPaymentMethod
 {
@@ -51,4 +51,3 @@ public class BlikPayment : IPaymentMethod
     public bool Refund(decimal amount) => true;
     public string GetTransactionId() => _transactionId;
 }
-

@@ -1,4 +1,4 @@
-﻿namespace MojsAjsli.Patterns.Adapter;
+﻿namespace MojsAjsli.Payments;
 
 public interface IPaymentMethod
 {
@@ -7,4 +7,3 @@ public interface IPaymentMethod
     bool Refund(decimal amount);
     string GetTransactionId();
 }
-

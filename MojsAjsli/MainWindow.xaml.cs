@@ -23,6 +23,7 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
     private readonly WaiterService _waiterService;
     private readonly CashierService _cashierService;
     private readonly StatisticsService _statisticsService;
+    private readonly SimulationService _simulationService;
     private readonly RestaurantMediator _mediator;
     private readonly RestaurantNotificationSubject _notificationSubject;
 
@@ -45,6 +46,7 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
         _waiterService = new WaiterService("Jan");
         _cashierService = new CashierService();
         _statisticsService = new StatisticsService();
+        _simulationService = new SimulationService(_tableService, _menuService);
 
         _mediator = new RestaurantMediator();
         _mediator.Register(_kitchenService);
@@ -70,15 +72,12 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
 
     private void InitializeUI()
     {
-        // Inicjalizacja kafelków kategorii
-        var categories = new List<DishCategory>();
-        foreach (DishCategory category in Enum.GetValues<DishCategory>())
-            categories.Add(category);
-        CategoryTilesControl.ItemsSource = categories;
-
         TablesControl.ItemsSource = _tableService.Tables;
         MenuListBox.ItemsSource = _menuService.GetAllItems();
         CurrentOrderListBox.ItemsSource = _currentOrderItems;
+
+        // Inicjalizacja kafelków kategorii
+        CategoryTilesControl.ItemsSource = Enum.GetValues(typeof(DishCategory)).Cast<DishCategory>();
 
         KitchenQueueListBox.ItemsSource = _kitchenService.OrderQueue;
         PreparingListBox.ItemsSource = _kitchenService.PreparingOrders;
@@ -99,10 +98,11 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
 
         DeliveredOrdersListBox.SelectionChanged += (s, e) => UpdatePaymentSummary();
 
-        NotificationLogListBox.ItemsSource = _notificationLog;
+        // Inicjalizacja domyślnego wyboru kafelka gości (2)
+        _selectedGuestTile = Guest2Tile;
+        Guest2Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#5D4037"));
 
         UpdateStatistics();
-        UpdateStatus("Gotowy do pracy");
     }
 
     private void Timer_Tick(object? sender, EventArgs e)
@@ -517,10 +517,6 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
         FreeTablesText.Text = "Wolne: " + _tableService.GetFreeTablesCount();
         OccupiedTablesText.Text = "Zajete: " + _tableService.GetOccupiedTablesCount();
         TotalSeatsText.Text = "Miejsca: " + _tableService.GetOccupiedSeats() + "/" + _tableService.GetTotalSeats();
-
-        TablesStatusText.Text = "Stoliki: " + _tableService.GetOccupiedTablesCount() + "/" + _tableService.Tables.Count + " zajetych";
-
-        TopDishesListBox.ItemsSource = _statisticsService.GetTopDishes();
     }
 
     private void Mediator_OnNotification(object? sender, string message)
@@ -555,11 +551,6 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
 
         while (_notificationLog.Count > 100)
             _notificationLog.RemoveAt(_notificationLog.Count - 1);
-    }
-
-    private void UpdateStatus(string status)
-    {
-        StatusText.Text = status;
     }
 
     private void CategoryTile_Click(object sender, MouseButtonEventArgs e)
@@ -623,6 +614,169 @@ public partial class MainWindow : Window, Patterns.Observer.IObserver<OrderNotif
             Guest4Tile.Background = new SolidColorBrush((Color)ColorConverter.ConvertFromString("#8D6E63"));
             _selectedGuestTile = Guest2Tile;
         }
+    }
+
+    private void RunSimulation_Click(object sender, RoutedEventArgs e)
+    {
+        // Pobierz czas trwania symulacji z pola tekstowego
+        if (!int.TryParse(SimulationDurationTextBox.Text, out int duration) || duration <= 0)
+        {
+            MessageBox.Show("Podaj prawidłowy czas symulacji (w minutach)!", "Błąd", MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+
+        // Pobierz prędkość symulacji
+        int speed = 500; // domyślna
+        if (SimulationSpeedComboBox.SelectedItem is ComboBoxItem selectedItem && selectedItem.Tag is string tagValue)
+        {
+            speed = int.Parse(tagValue);
+        }
+
+        // Uruchom symulację w trybie czasu rzeczywistego
+        _simulationService.StartSimulation(duration, speed);
+        
+        // Przełącz źródła danych dla zakładki Kuchnia i Kelner na dane z symulacji
+        SwitchToSimulationDataSources();
+        
+        // Podłącz obserwację wyników na żywo
+        var timer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
+        timer.Tick += (s, args) =>
+        {
+            var result = _simulationService.GetCurrentResults();
+            
+            // Aktualizuj wyniki na bieżąco
+            SimServedText.Text = result.ServedGuests.ToString();
+            SimLostText.Text = result.LostGuests.ToString();
+            SimRevenueText.Text = result.TotalRevenue.ToString("N2") + " zł";
+            SimServiceRateText.Text = result.ServiceRate.ToString("N1") + "%";
+            
+            // Top danie
+            if (result.OrderedDishes.Any())
+            {
+                var topDish = result.OrderedDishes.OrderByDescending(x => x.Value).First();
+                SimTopDishText.Text = topDish.Key + " (" + topDish.Value + " szt.)";
+            }
+            else
+            {
+                SimTopDishText.Text = "-";
+            }
+            
+            // Aktualizuj log
+            SimulationLogListBox.ItemsSource = _simulationService.SimulationLog;
+            
+            // Przewiń log na dół
+            if (SimulationLogListBox.Items.Count > 0)
+            {
+                SimulationLogListBox.ScrollIntoView(SimulationLogListBox.Items[SimulationLogListBox.Items.Count - 1]);
+            }
+            
+            // Aktualizuj liczniki w zakładce Kuchnia
+            QueueCountText.Text = $"W kolejce: {_simulationService.KitchenQueueCount}";
+            PreparingCountText.Text = $"Przygotowywane: {_simulationService.PreparingCount}";
+            
+            // Status
+            if (result.AcceptingNewGuests)
+            {
+                SimStatusText.Text = $"Trwa... Czas: {_simulationService.CurrentTimeFormatted} (przyjmowanie gości)";
+            }
+            else if (result.IsRunning)
+            {
+                SimStatusText.Text = $"Trwa... Czas: {_simulationService.CurrentTimeFormatted} (finalizacja)";
+            }
+            else
+            {
+                SimStatusText.Text = "Zakończona";
+                timer.Stop();
+                RunSimulationButton.IsEnabled = true;
+                StopSimulationButton.IsEnabled = false;
+                
+                // Przywróć oryginalne źródła danych
+                RestoreOriginalDataSources();
+                UpdateStatistics();
+            }
+        };
+        timer.Start();
+
+        // Dezaktywuj/aktywuj przyciski
+        RunSimulationButton.IsEnabled = false;
+        StopSimulationButton.IsEnabled = true;
+        SimStatusText.Text = "Uruchamianie symulacji...";
+        
+        AddNotification("Symulacja uruchomiona w trybie czasu rzeczywistego");
+    }
+
+    private void ApplySimulationParams_Click(object sender, RoutedEventArgs e)
+    {
+        try
+        {
+            // Pobierz i zastosuj parametry symulacji
+            if (int.TryParse(MinArrivalTextBox.Text, out int minArrival))
+                _simulationService.MinArrivalInterval = minArrival;
+            
+            if (int.TryParse(MaxArrivalTextBox.Text, out int maxArrival))
+                _simulationService.MaxArrivalInterval = maxArrival;
+            
+            if (int.TryParse(MinGroupSizeTextBox.Text, out int minGroup))
+                _simulationService.MinGroupSize = minGroup;
+            
+            if (int.TryParse(MaxGroupSizeTextBox.Text, out int maxGroup))
+                _simulationService.MaxGroupSize = maxGroup;
+            
+            if (int.TryParse(MinWaitTimeTextBox.Text, out int minWait))
+                _simulationService.MinWaitTime = minWait;
+            
+            if (int.TryParse(MaxWaitTimeTextBox.Text, out int maxWait))
+                _simulationService.MaxWaitTime = maxWait;
+            
+            if (int.TryParse(MaxConcurrentOrdersTextBox.Text, out int maxConcurrent))
+                _simulationService.MaxConcurrentOrders = maxConcurrent;
+            
+            AddNotification("Parametry symulacji zaktualizowane");
+            MessageBox.Show("Parametry symulacji zostały zaktualizowane!\n\n" +
+                $"Interwał klientów: {_simulationService.MinArrivalInterval}-{_simulationService.MaxArrivalInterval} min\n" +
+                $"Rozmiar grup: {_simulationService.MinGroupSize}-{_simulationService.MaxGroupSize} osób\n" +
+                $"Czas oczekiwania: {_simulationService.MinWaitTime}-{_simulationService.MaxWaitTime} min\n" +
+                $"Równoległe zamówienia: {_simulationService.MaxConcurrentOrders}",
+                "Parametry zapisane", MessageBoxButton.OK, MessageBoxImage.Information);
+        }
+        catch (Exception ex)
+        {
+            MessageBox.Show("Błąd podczas zapisywania parametrów: " + ex.Message, "Błąd", MessageBoxButton.OK, MessageBoxImage.Error);
+        }
+    }
+
+    private void StopSimulation_Click(object sender, RoutedEventArgs e)
+    {
+        _simulationService.StopSimulation();
+        
+        RunSimulationButton.IsEnabled = true;
+        StopSimulationButton.IsEnabled = false;
+        
+        var result = _simulationService.GetCurrentResults();
+        SimStatusText.Text = $"Zatrzymana - obsłużono {result.ServedGuests} gości, utracono {result.LostGuests}";
+        
+        // Przywróć oryginalne źródła danych
+        RestoreOriginalDataSources();
+        UpdateStatistics();
+        AddNotification("Symulacja zatrzymana przez użytkownika");
+    }
+    
+    private void SwitchToSimulationDataSources()
+    {
+        // Przełącz źródła danych list na kolekcje z symulacji
+        KitchenQueueListBox.ItemsSource = _simulationService.KitchenQueue;
+        PreparingListBox.ItemsSource = _simulationService.PreparingOrders;
+        ReadyOrdersListBox.ItemsSource = _simulationService.ReadyOrders;
+        DeliveredOrdersListBox.ItemsSource = _simulationService.DeliveredOrders;
+    }
+    
+    private void RestoreOriginalDataSources()
+    {
+        // Przywróć oryginalne źródła danych z serwisów
+        KitchenQueueListBox.ItemsSource = _kitchenService.OrderQueue;
+        PreparingListBox.ItemsSource = _kitchenService.PreparingOrders;
+        ReadyOrdersListBox.ItemsSource = _waiterService.ReadyOrders;
+        DeliveredOrdersListBox.ItemsSource = _deliveredOrders;
     }
 }
 
