@@ -618,86 +618,114 @@
             
             <!-- Tab: Statystyki -->
             <TabItem Header="Statystyki">
-                <ScrollViewer>
-                    <Grid Margin="10">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                            <ColumnDefinition Width="*"/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="Auto"/>
-                            <RowDefinition Height="*"/>
-                        </Grid.RowDefinitions>
-
-                        <!-- Przychód dzienny -->
-                        <Border Grid.Column="0" Grid.Row="0" Style="{StaticResource CardStyle}">
-                            <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="💰 Przychód dzienny" FontSize="14" Foreground="Gray"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock x:Name="DailyRevenueText" Text="0,00 zł"
-                                           FontSize="32" FontWeight="Bold" Foreground="#4CAF50"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Liczba zamówień -->
-                        <Border Grid.Column="1" Grid.Row="0" Style="{StaticResource CardStyle}">
-                            <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="📦 Zamówienia dziś" FontSize="14" Foreground="Gray"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock x:Name="TodayOrdersText" Text="0"
-                                           FontSize="32" FontWeight="Bold" Foreground="#2196F3"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Średnia wartość -->
-                        <Border Grid.Column="2" Grid.Row="0" Style="{StaticResource CardStyle}">
-                            <StackPanel HorizontalAlignment="Center">
-                                <TextBlock Text="📈 Średnia zamówienia" FontSize="14" Foreground="Gray"
-                                           HorizontalAlignment="Center"/>
-                                <TextBlock x:Name="AverageOrderText" Text="0,00 zł"
-                                           FontSize="32" FontWeight="Bold" Foreground="#FF9800"
-                                           HorizontalAlignment="Center"/>
-                            </StackPanel>
-                        </Border>
+                <Grid Margin="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="2*"/>
+                        <ColumnDefinition Width="1*"/>
+                    </Grid.ColumnDefinitions>
+                    
+                    <!-- LEWA STRONA: Symulacja -->
+                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
                         
-                        <!-- Stoliki -->
-                        <Border Grid.Column="0" Grid.Row="1" Style="{StaticResource CardStyle}">
+                        
+
+                        <!-- Parametry symulacji -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock Text="🪑 Status stolików" Style="{StaticResource SubHeaderStyle}"/>
-                                <TextBlock x:Name="FreeTablesText" FontSize="14"/>
-                                <TextBlock x:Name="OccupiedTablesText" FontSize="14"/>
-                                <TextBlock x:Name="TotalSeatsText" FontSize="14"/>
+                                <TextBlock Text="Parametry symulacji" Style="{StaticResource SubHeaderStyle}"/>
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*"/>
+                                        <ColumnDefinition Width="*"/>
+                                    </Grid.ColumnDefinitions>
+                                    
+                                    <!-- Kolumna lewa -->
+                                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                                        <TextBlock Text="Częstotliwość klientów" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Min interwał (min):" FontSize="11" VerticalAlignment="Center" Width="110"/>
+                                            <TextBox x:Name="MinArrivalTextBox" Width="50" 
+                                                     Text="{Binding SimulationVM.MinArrivalInterval, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,10">
+                                            <TextBlock Text="Max interwał (min):" FontSize="11" VerticalAlignment="Center" Width="110"/>
+                                            <TextBox x:Name="MaxArrivalTextBox" Width="50" 
+                                                     Text="{Binding SimulationVM.MaxArrivalInterval, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        
+                                        <TextBlock Text="Rozmiar grup gości" FontWeight="SemiBold" FontSize="12" Margin="0,5,0,5"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Min osób:" FontSize="11" VerticalAlignment="Center" Width="110"/>
+                                            <TextBox x:Name="MinGroupSizeTextBox" Width="50" 
+                                                     Text="{Binding SimulationVM.MinGroupSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Max osób:" FontSize="11" VerticalAlignment="Center" Width="110"/>
+                                            <TextBox x:Name="MaxGroupSizeTextBox" Width="50" 
+                                                     Text="{Binding SimulationVM.MaxGroupSize, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                    
+                                    <!-- Kolumna prawa -->
+                                    <StackPanel Grid.Column="1">
+                                        <TextBlock Text="Cierpliwość klientów" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Min oczekiwanie:" FontSize="11" VerticalAlignment="Center" Width="110"/>
+                                            <TextBox x:Name="MinWaitTimeTextBox" Width="50" 
+                                                     Text="{Binding SimulationVM.MinWaitTime, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,10">
+                                            <TextBlock Text="Max oczekiwanie:" FontSize="11" VerticalAlignment="Center" Width="110"/>
+                                            <TextBox x:Name="MaxWaitTimeTextBox" Width="50" 
+                                                     Text="{Binding SimulationVM.MaxWaitTime, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                        
+                                        <TextBlock Text="Wydajność kuchni" FontWeight="SemiBold" FontSize="12" Margin="0,5,0,5"/>
+                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                            <TextBlock Text="Równoległe zamówienia:" FontSize="11" VerticalAlignment="Center" Width="110"/>
+                                            <TextBox x:Name="MaxConcurrentOrdersTextBox" Width="50" 
+                                                     Text="{Binding SimulationVM.MaxConcurrentOrders, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
+                                        </StackPanel>
+                                    </StackPanel>
+                                </Grid>
+                                
+                                <Button Content="Zastosuj parametry" 
+                                        Command="{Binding SimulationVM.ApplyParamsCommand}"
+                                        Background="#2196F3" Foreground="White"
+                                        Padding="15,8" Margin="0,15,0,0" BorderThickness="0" FontSize="12"
+                                        Cursor="Hand" HorizontalAlignment="Center">
+                                    <Button.Template>
+                                        <ControlTemplate TargetType="Button">
+                                            <Border Background="{TemplateBinding Background}" CornerRadius="5" 
+                                                    Padding="{TemplateBinding Padding}">
+                                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                            </Border>
+                                        </ControlTemplate>
+                                    </Button.Template>
+                                </Button>
                             </StackPanel>
                         </Border>
 
-                        <!-- Kuchnia -->
-                        <Border Grid.Column="1" Grid.Row="1" Style="{StaticResource CardStyle}">
-                            <StackPanel>
-                                <TextBlock Text="👨‍🍳 Status kuchni" Style="{StaticResource SubHeaderStyle}"/>
-                                <TextBlock x:Name="KitchenQueueStatusText" FontSize="14"/>
-                                <TextBlock x:Name="KitchenPreparingStatusText" FontSize="14"/>
-                                <TextBlock x:Name="EstimatedWaitText" FontSize="14"/>
-                            </StackPanel>
-                        </Border>
                         
                         <!-- Symulacja - Panel kontrolny -->
-                        <Border Grid.Column="2" Grid.Row="1" Style="{StaticResource CardStyle}">
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
                             <StackPanel>
-                                <TextBlock Text="🎮 Symulacja restauracji" Style="{StaticResource SubHeaderStyle}"/>
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
-                                    <TextBlock Text="Czas (min):" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    <TextBox x:Name="SimulationDurationTextBox" Width="60" Text="120"
+                                <TextBlock Text="Symulacja restauracji" Style="{StaticResource SubHeaderStyle}"/>
+                                <StackPanel Orientation="Horizontal" Margin="0,10,0,5">
+                                    <TextBlock Text="Czas trwania (min):" VerticalAlignment="Center" Margin="0,0,10,0" Width="120"/>
+                                    <TextBox x:Name="SimulationDurationTextBox" Width="80" Text="120"
                                              VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
                                 </StackPanel>
-                                <StackPanel Orientation="Horizontal" Margin="0,5,0,5">
-                                    <TextBlock Text="Prędkość (ms):" VerticalAlignment="Center" Margin="0,0,10,0"/>
-                                    <ComboBox x:Name="SimulationSpeedComboBox" Width="100">
+                                <StackPanel Orientation="Horizontal" Margin="0,5,0,10">
+                                    <TextBlock Text="Prędkość symulacji:" VerticalAlignment="Center" Margin="0,0,10,0" Width="120"/>
+                                    <ComboBox x:Name="SimulationSpeedComboBox" Width="150">
                                         <ComboBoxItem Content="Szybka (100ms)" Tag="100"/>
                                         <ComboBoxItem Content="Normalna (500ms)" Tag="500" IsSelected="True"/>
                                         <ComboBoxItem Content="Wolna (1000ms)" Tag="1000"/>
@@ -706,9 +734,9 @@
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal">
                                     <Button x:Name="RunSimulationButton" Content="▶ Start"
-                                            Command="{Binding SimulationVM.RunCommand}"
-                                            Background="#4CAF50" Foreground="White" Padding="15,8"
-                                            Margin="0,5,5,0" BorderThickness="0" FontSize="14"
+                                            Click="RunSimulationButton_Click"
+                                            Background="#4CAF50" Foreground="White" Padding="20,10"
+                                            Margin="0,0,10,0" BorderThickness="0" FontSize="14"
                                             Cursor="Hand">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
@@ -721,8 +749,8 @@
                                     </Button>
                                     <Button x:Name="StopSimulationButton" Content="⏹ Stop"
                                             Command="{Binding SimulationVM.StopCommand}"
-                                            Background="#F44336" Foreground="White" Padding="15,8"
-                                            Margin="5,5,0,0" BorderThickness="0" FontSize="14"
+                                            Background="#F44336" Foreground="White" Padding="20,10"
+                                            Margin="0" BorderThickness="0" FontSize="14"
                                             Cursor="Hand" IsEnabled="False">
                                         <Button.Template>
                                             <ControlTemplate TargetType="Button">
@@ -735,141 +763,15 @@
                                     </Button>
                                 </StackPanel>
                                 <TextBlock x:Name="SimStatusText" Text="Gotowa do uruchomienia"
-                                           FontSize="11" Foreground="Gray" Margin="0,5,0,0" TextWrapping="Wrap"/>
+                                           FontSize="12" Foreground="Gray" Margin="0,10,0,0" TextWrapping="Wrap"/>
                             </StackPanel>
                         </Border>
-
-                        <!-- Edytor parametrów symulacji -->
-                        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="2"
-                                Style="{StaticResource CardStyle}" Margin="5,10,5,5">
-                            <StackPanel>
-                                <TextBlock Text="⚙️ Parametry symulacji" Style="{StaticResource SubHeaderStyle}"/>
-                                <Grid>
-                                    <Grid.ColumnDefinitions>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                        <ColumnDefinition Width="*"/>
-                                    </Grid.ColumnDefinitions>
-                                    
-                                    <!-- Częstotliwość klientów -->
-                                    <StackPanel Grid.Column="0" Margin="5">
-                                        <TextBlock Text="Częstotliwość klientów" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <TextBlock Text="Min interwał (min):" FontSize="11" VerticalAlignment="Center" Width="100"/>
-                                            <TextBox x:Name="MinArrivalTextBox" Width="50" Text="5" 
-                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <TextBlock Text="Max interwał (min):" FontSize="11" VerticalAlignment="Center" Width="100"/>
-                                            <TextBox x:Name="MaxArrivalTextBox" Width="50" Text="25" 
-                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                    
-                                    <!-- Rozmiar grup -->
-                                    <StackPanel Grid.Column="1" Margin="5">
-                                        <TextBlock Text="Rozmiar grup gości" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <TextBlock Text="Min osób:" FontSize="11" VerticalAlignment="Center" Width="100"/>
-                                            <TextBox x:Name="MinGroupSizeTextBox" Width="50" Text="1" 
-                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <TextBlock Text="Max osób:" FontSize="11" VerticalAlignment="Center" Width="100"/>
-                                            <TextBox x:Name="MaxGroupSizeTextBox" Width="50" Text="8" 
-                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                    
-                                    <!-- Cierpliwość klientów -->
-                                    <StackPanel Grid.Column="2" Margin="5">
-                                        <TextBlock Text="Cierpliwość klientów" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <TextBlock Text="Min oczekiwanie:" FontSize="11" VerticalAlignment="Center" Width="100"/>
-                                            <TextBox x:Name="MinWaitTimeTextBox" Width="50" Text="5" 
-                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
-                                        </StackPanel>
-                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <TextBlock Text="Max oczekiwanie:" FontSize="11" VerticalAlignment="Center" Width="100"/>
-                                            <TextBox x:Name="MaxWaitTimeTextBox" Width="50" Text="15" 
-                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
-                                        </StackPanel>
-                                    </StackPanel>
-                                    
-                                    <!-- Kuchnia -->
-                                    <StackPanel Grid.Column="3" Margin="5">
-                                        <TextBlock Text="Wydajność kuchni" FontWeight="SemiBold" FontSize="12" Margin="0,0,0,5"/>
-                                        <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
-                                            <TextBlock Text="Równoległe zamówienia:" FontSize="11" VerticalAlignment="Center" Width="120"/>
-                                            <TextBox x:Name="MaxConcurrentOrdersTextBox" Width="50" Text="3" 
-                                                     VerticalContentAlignment="Center" HorizontalContentAlignment="Center" FontSize="11"/>
-                                        </StackPanel>
-                                        <Button Content="Zastosuj parametry" 
-                                                Command="{Binding SimulationVM.ApplyParamsCommand}"
-                                                Background="#2196F3" Foreground="White"
-                                                Padding="10,5" Margin="0,10,0,0" BorderThickness="0" FontSize="11"
-                                                Cursor="Hand">
-                                            <Button.Template>
-                                                <ControlTemplate TargetType="Button">
-                                                    <Border Background="{TemplateBinding Background}" CornerRadius="5" 
-                                                            Padding="{TemplateBinding Padding}">
-                                                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
-                                                    </Border>
-                                                </ControlTemplate>
-                                            </Button.Template>
-                                        </Button>
-                                    </StackPanel>
-                                </Grid>
-                            </StackPanel>
-                        </Border>
-
-                        <!-- Wyniki symulacji -->
-                        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="3"
-                                Style="{StaticResource CardStyle}" Margin="5,10,5,5">
-                            <Grid>
-                                <Grid.ColumnDefinitions>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                    <ColumnDefinition Width="*"/>
-                                </Grid.ColumnDefinitions>
-                                <StackPanel Grid.Column="0" HorizontalAlignment="Center">
-                                    <TextBlock Text="👥 Obsłużeni" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Name="SimServedText" Text="0" FontSize="24" FontWeight="Bold" 
-                                               Foreground="#4CAF50" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="1" HorizontalAlignment="Center">
-                                    <TextBlock Text="😞 Utraceni" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Name="SimLostText" Text="0" FontSize="24" FontWeight="Bold" 
-                                               Foreground="#F44336" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="2" HorizontalAlignment="Center">
-                                    <TextBlock Text="💰 Przychód" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Name="SimRevenueText" Text="0 zł" FontSize="24" FontWeight="Bold" 
-                                               Foreground="#FF9800" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="3" HorizontalAlignment="Center">
-                                    <TextBlock Text="📊 Skuteczność" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Name="SimServiceRateText" Text="0%" FontSize="24" FontWeight="Bold" 
-                                               Foreground="#2196F3" HorizontalAlignment="Center"/>
-                                </StackPanel>
-                                <StackPanel Grid.Column="4" HorizontalAlignment="Center">
-                                    <TextBlock Text="🍽️ Top danie" FontSize="12" Foreground="Gray" HorizontalAlignment="Center"/>
-                                    <TextBlock x:Name="SimTopDishText" Text="-" FontSize="14" FontWeight="Bold" 
-                                               Foreground="#9C27B0" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
-                                </StackPanel>
-                            </Grid>
-                        </Border>
-
                         <!-- Log symulacji -->
-                        <Border Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="4"
-                                Style="{StaticResource CardStyle}" Margin="5,10,5,5">
+                        <Border Style="{StaticResource CardStyle}">
                             <StackPanel>
-                                <TextBlock Text="📝 Log symulacji" Style="{StaticResource SubHeaderStyle}"/>
-                                <ListBox x:Name="SimulationLogListBox" Height="250"
-                                         Style="{StaticResource ModernListBox}">
+                                <TextBlock Text="Log symulacji" Style="{StaticResource SubHeaderStyle}"/>
+                                <ListBox x:Name="SimulationLogListBox" Height="350"
+                                         Style="{StaticResource ModernListBox}" Margin="0,10,0,0">
                                     <ListBox.ItemTemplate>
                                         <DataTemplate>
                                             <TextBlock Text="{Binding}" FontSize="11" FontFamily="Consolas"/>
@@ -878,8 +780,94 @@
                                 </ListBox>
                             </StackPanel>
                         </Border>
-                    </Grid>
-                </ScrollViewer>
+                    </StackPanel>
+                    
+                    <!-- PRAWA STRONA: Statystyki -->
+                    <StackPanel Grid.Column="1">
+                        
+                        <!-- Przychód -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="Przychód symulacji" FontSize="14" Foreground="Gray"
+                                           HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="SimRevenueText" Text="0,00 zł"
+                                           FontSize="28" FontWeight="Bold" 
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Zamówienia -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                            <StackPanel HorizontalAlignment="Center">
+                                <TextBlock Text="Liczba zamówień" FontSize="14" Foreground="Gray"
+                                           HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                                <TextBlock FontSize="24" FontWeight="Bold" 
+                                           HorizontalAlignment="Center">
+                                    <Run x:Name="SimServedText" Text="0"/>
+                                    <Run Text=" + " Foreground="Gray" FontSize="18"/>
+                                    <Run x:Name="SimLostText" Text="0" />
+                                </TextBlock>
+                                <TextBlock Text="(obsłużeni + utraceni)" FontSize="10" Foreground="Gray"
+                                           HorizontalAlignment="Center" Margin="0,3,0,0"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Średnia wartość -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Średnia zamówienia" FontSize="14" Foreground="Gray"
+                                           HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                                <TextBlock FontSize="24" FontWeight="Bold" 
+                                           HorizontalAlignment="Center">
+                                    <Run Text="{Binding SimulationVM.TotalRevenue, FallbackValue='0,00 zł'}"/>
+                                </TextBlock>
+                                <TextBlock x:Name="SimAverageOrderText" Text="0,00 zł"
+                                           FontSize="24" FontWeight="Bold" Foreground="#FF9800"
+                                           HorizontalAlignment="Center" Visibility="Collapsed"/>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Obsłużeni goście -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Obsłużeni goście" FontSize="14" Foreground="Gray"
+                                           HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding ElementName=SimServedText, Path=Text}"
+                                               FontSize="32" FontWeight="Bold" Foreground="#4CAF50"/>
+                                    <TextBlock Text=" osób" FontSize="16" Foreground="Gray" 
+                                               VerticalAlignment="Bottom" Margin="5,0,0,8"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Utraceni goście -->
+                        <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
+                            <StackPanel>
+                                <TextBlock Text="Utraceni goście" FontSize="14" Foreground="Gray"
+                                           HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                                    <TextBlock Text="{Binding ElementName=SimLostText, Path=Text}"
+                                               FontSize="32" FontWeight="Bold" Foreground="#F44336"/>
+                                    <TextBlock Text=" osób" FontSize="16" Foreground="Gray" 
+                                               VerticalAlignment="Bottom" Margin="5,0,0,8"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <!-- Skuteczność -->
+                        <Border Style="{StaticResource CardStyle}">
+                            <StackPanel>
+                                <TextBlock Text="Skuteczność obsługi" FontSize="14" Foreground="Gray"
+                                           HorizontalAlignment="Center" Margin="0,0,0,5"/>
+                                <TextBlock x:Name="SimServiceRateText" Text="0%"
+                                           FontSize="28" FontWeight="Bold" 
+                                           HorizontalAlignment="Center"/>
+                            </StackPanel>
+                        </Border>
+                        
+                    </StackPanel>
+                </Grid>
             </TabItem>
             
             <!-- Tab: O wzorcach -->

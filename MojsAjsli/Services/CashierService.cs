@@ -1,5 +1,4 @@
 ﻿using MojsAjsli.Models;
-using MojsAjsli.Payments;
 using MojsAjsli.Patterns.Mediator;
 using MojsAjsli.Patterns.State;
 using MojsAjsli.Patterns.Strategy;
@@ -9,7 +8,7 @@ namespace MojsAjsli.Services;
 public class CashierService : IColleague
 {
     private IRestaurantMediator? _mediator;
-    private readonly List<IPaymentMethod> _paymentMethods = new();
+    private readonly List<IPaymentStrategy> _paymentStrategies = new();
     private readonly List<IPricingStrategy> _pricingStrategies = new();
     private IPricingStrategy _currentStrategy;
     private readonly List<Payment> _transactionHistory = new();
@@ -23,10 +22,10 @@ public class CashierService : IColleague
 
     public CashierService()
     {
-        _paymentMethods.Add(new CashPayment());
-        _paymentMethods.Add(new CardPayment());
-        _paymentMethods.Add(new BlikPayment());
-        _paymentMethods.Add(new BankPayment("PL12345678901234567890123456"));
+        _paymentStrategies.Add(new CashPaymentStrategy());
+        _paymentStrategies.Add(new CardPaymentStrategy());
+        _paymentStrategies.Add(new BlikPaymentStrategy());
+        _paymentStrategies.Add(new BankTransferPaymentStrategy("PL12345678901234567890123456"));
 
         _pricingStrategies.Add(new RegularPricingStrategy());
         _pricingStrategies.Add(new HappyHourStrategy());
@@ -47,7 +46,7 @@ public class CashierService : IColleague
     }
 
     public List<IPricingStrategy> GetAvailableStrategies() => new(_pricingStrategies);
-    public List<IPaymentMethod> GetPaymentMethods() => new(_paymentMethods);
+    public List<IPaymentStrategy> GetPaymentStrategies() => new(_paymentStrategies);
     public void SetPricingStrategy(IPricingStrategy strategy) => _currentStrategy = strategy;
 
     public IPricingStrategy GetBestApplicableStrategy(Order order, int groupSize = 1)
@@ -68,24 +67,22 @@ public class CashierService : IColleague
     public decimal CalculateBill(Order order) => _currentStrategy.CalculatePrice(order);
     public decimal CalculateBillWithStrategy(Order order, IPricingStrategy strategy) => strategy.CalculatePrice(order);
 
-    public Payment ProcessPayment(Order order, PaymentType paymentType, string? blikCode = null)
+    public Payment ProcessPayment(Order order, PaymentMethodType paymentType, string? blikCode = null)
     {
         var amount = CalculateBill(order);
         var payment = new Payment(amount, paymentType);
 
-        IPaymentMethod? method = paymentType switch
-        {
-            PaymentType.Cash => _paymentMethods.OfType<CashPayment>().FirstOrDefault(),
-            PaymentType.Card => _paymentMethods.OfType<CardPayment>().FirstOrDefault(),
-            PaymentType.Blik => GetBlikPayment(blikCode),
-            PaymentType.BankTransfer => _paymentMethods.OfType<BankPayment>().FirstOrDefault(),
-            _ => null
-        };
+        IPaymentStrategy? strategy = _paymentStrategies.FirstOrDefault(s => s.Type == paymentType);
 
-        if (method != null && method.ProcessPayment(amount))
+        if (strategy is BlikPaymentStrategy blikStrategy && !string.IsNullOrEmpty(blikCode))
+        {
+            blikStrategy.BlikCode = blikCode;
+        }
+
+        if (strategy != null && strategy.ProcessPayment(amount))
         {
             payment.IsSuccessful = true;
-            payment.TransactionId = method.GetTransactionId();
+            payment.TransactionId = strategy.GetTransactionId();
             order.Pay();
             _transactionHistory.Add(payment);
             _mediator?.NotifyPaymentComplete(order.TableNumber, amount);
@@ -93,14 +90,6 @@ public class CashierService : IColleague
         }
 
         return payment;
-    }
-
-    private IPaymentMethod? GetBlikPayment(string? blikCode)
-    {
-        var blik = _paymentMethods.OfType<BlikPayment>().FirstOrDefault();
-        if (blik != null && !string.IsNullOrEmpty(blikCode))
-            blik.BlikCode = blikCode;
-        return blik;
     }
 
     public decimal GetDailyRevenue()

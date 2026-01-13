@@ -49,14 +49,14 @@ public class WaiterService : IColleague
 
     public void AddItemToOrder(Order order, IDish dish)
     {
-        _orderHistory.SaveState(order);
         order.AddItem(dish);
+        _orderHistory.SaveState(order); // Zapisz stan PO dodaniu
     }
 
     public void RemoveItemFromOrder(Order order, IDish dish)
     {
-        _orderHistory.SaveState(order);
         order.RemoveItem(dish);
+        _orderHistory.SaveState(order); // Zapisz stan PO usunięciu
     }
 
     public void UndoLastAction(Order order)
@@ -98,4 +98,3 @@ public class WaiterService : IColleague
         _orderHistory.ClearHistory(order.Id);
     }
 }
-

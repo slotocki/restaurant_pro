@@ -1,26 +1,19 @@
-﻿namespace MojsAjsli.Models;
+﻿using MojsAjsli.Patterns.Strategy;
 
-public enum PaymentType
-{
-    Cash,
-    Card,
-    BankTransfer,
-    MobilePayment,
-    Blik
-}
+namespace MojsAjsli.Models;
 
 public class Payment
 {
     public int Id { get; set; }
     public int TableNumber { get; set; }
     public decimal Amount { get; set; }
-    public PaymentType Type { get; set; }
+    public PaymentMethodType Type { get; set; }
     public DateTime Timestamp { get; set; }
     public bool IsProcessed { get; set; }
     public bool IsSuccessful { get; set; }
     public string? TransactionId { get; set; }
 
-    public Payment(int id, int tableNumber, decimal amount, PaymentType type)
+    public Payment(int id, int tableNumber, decimal amount, PaymentMethodType type)
     {
         Id = id;
         TableNumber = tableNumber;
@@ -31,7 +24,7 @@ public class Payment
         IsSuccessful = false;
     }
 
-    public Payment(decimal amount, PaymentType type)
+    public Payment(decimal amount, PaymentMethodType type)
     {
         Amount = amount;
         Type = type;

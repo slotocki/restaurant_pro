@@ -6,8 +6,7 @@ public enum DishCategory
     MainCourse,
     Dessert,
     Drink,
-    Vegetarian,
-    Special
+    Vegetarian
 }
 
 public class MenuItem
@@ -27,4 +26,3 @@ public class MenuItem
         PreparationTimeMinutes = prepTime;
     }
 }
-

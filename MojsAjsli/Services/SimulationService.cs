@@ -22,6 +22,13 @@ public class SimulationService : INotifyPropertyChanged
     private decimal _totalRevenue;
     private int _nextGuestArrival;
     private int _simulationSpeed = 1000; // milisekundy na minutę symulacji
+    private int _returnedOrdersCount; // liczba zwróconych zamówień
+    
+    // Awaria kuchni - nieliniowość
+    private int _kitchenBreakdownTime = 0; // Czas zakończenia awarii (0 = brak awarii)
+    private int _normalMaxConcurrentOrders = 3; // Normalna przepustowość
+    private bool _isKitchenBreakdown = false; // Czy trwa awaria
+    private int _nextBreakdownCheck = 0; // Kiedy sprawdzić czy wystąpi awaria
     
     // Konfigurowalne parametry symulacji
     private int _minArrivalInterval = 5;
@@ -31,6 +38,7 @@ public class SimulationService : INotifyPropertyChanged
     private int _minWaitTime = 5;
     private int _maxWaitTime = 15;
     private int _maxConcurrentOrders = 3;
+    private int _returnChancePercent = 5; // Procent szansy na zwrot zamówienia
     
     private readonly List<SimulationGuestGroup> _waitingGroups = new();
     private readonly List<SimulationGuestGroup> _seatedGroups = new();
@@ -38,6 +46,7 @@ public class SimulationService : INotifyPropertyChanged
     private readonly ObservableCollection<SimulationOrder> _preparingOrders = new();
     private readonly ObservableCollection<SimulationOrder> _readyOrders = new();
     private readonly ObservableCollection<SimulationOrder> _deliveredOrders = new();
+    private readonly ObservableCollection<SimulationOrder> _returnedOrders = new(); // Zwrócone zamówienia z priorytetem
     private readonly ObservableCollection<string> _simulationLog = new();
     private readonly Dictionary<string, int> _orderedDishes = new();
 
@@ -86,17 +95,36 @@ public class SimulationService : INotifyPropertyChanged
     public ObservableCollection<SimulationOrder> PreparingOrders => _preparingOrders;
     public ObservableCollection<SimulationOrder> ReadyOrders => _readyOrders;
     public ObservableCollection<SimulationOrder> DeliveredOrders => _deliveredOrders;
+    public ObservableCollection<SimulationOrder> ReturnedOrders => _returnedOrders;
 
     public int MinArrivalInterval
     {
         get => _minArrivalInterval;
-        set { _minArrivalInterval = Math.Max(1, value); OnPropertyChanged(); }
+        set 
+        { 
+            _minArrivalInterval = Math.Max(1, value); 
+            OnPropertyChanged();
+            // Jeśli symulacja jest uruchomiona, przelicz czas następnego przybycia
+            if (_isRunning && _acceptingNewGuests)
+            {
+                RecalculateNextArrival();
+            }
+        }
     }
     
     public int MaxArrivalInterval
     {
         get => _maxArrivalInterval;
-        set { _maxArrivalInterval = Math.Max(_minArrivalInterval + 1, value); OnPropertyChanged(); }
+        set 
+        { 
+            _maxArrivalInterval = Math.Max(_minArrivalInterval + 1, value); 
+            OnPropertyChanged();
+            // Jeśli symulacja jest uruchomiona, przelicz czas następnego przybycia
+            if (_isRunning && _acceptingNewGuests)
+            {
+                RecalculateNextArrival();
+            }
+        }
     }
     
     public int MinGroupSize
@@ -129,6 +157,33 @@ public class SimulationService : INotifyPropertyChanged
         set { _maxConcurrentOrders = Math.Max(1, value); OnPropertyChanged(); }
     }
     
+    public int ReturnedOrdersCount
+    {
+        get => _returnedOrdersCount;
+        private set { _returnedOrdersCount = value; OnPropertyChanged(); }
+    }
+    
+    public int ReturnChancePercent
+    {
+        get => _returnChancePercent;
+        set { _returnChancePercent = Math.Clamp(value, 0, 100); OnPropertyChanged(); }
+    }
+    
+    public int SimulationSpeed
+    {
+        get => _simulationSpeed;
+        set 
+        { 
+            _simulationSpeed = Math.Max(10, value); 
+            OnPropertyChanged();
+            // Aktualizuj timer jeśli jest uruchomiony
+            if (_timer.IsEnabled)
+            {
+                _timer.Interval = TimeSpan.FromMilliseconds(_simulationSpeed);
+            }
+        }
+    }
+    
     public SimulationService(TableService tableService, MenuService menuService)
     {
         _tableService = tableService;
@@ -147,9 +202,12 @@ public class SimulationService : INotifyPropertyChanged
         IsRunning = true;
         
         _nextGuestArrival = GetNextArrivalTime();
+        _normalMaxConcurrentOrders = _maxConcurrentOrders; // Zapamiętaj normalną przepustowość
+        _nextBreakdownCheck = _currentTime + _random.Next(20, 41); // Pierwsza awaria może wystąpić po 20-40 minutach
         
         AddLog($"=== Rozpoczęcie symulacji ({durationMinutes} minut) ===");
         AddLog($"Prędkość: 1 minuta symulacji = {speedMilliseconds}ms");
+        AddLog($"System wykrywania awarii uruchomiony");
         
         _timer.Interval = TimeSpan.FromMilliseconds(_simulationSpeed);
         _timer.Start();
@@ -187,6 +245,9 @@ public class SimulationService : INotifyPropertyChanged
             AddLog($"Obsługiwanie pozostałych gości...");
         }
         
+        // System awarii kuchni - nieliniowość
+        CheckKitchenBreakdown();
+        
         // Przybycie nowych gości (tylko jeśli akceptujemy)
         if (_acceptingNewGuests && _currentTime >= _nextGuestArrival)
         {
@@ -217,6 +278,7 @@ public class SimulationService : INotifyPropertyChanged
             AddLog($"=== Symulacja zakończona - wszyscy goście obsłużeni ===");
             AddLog($"Obsłużono gości: {_servedGuests}");
             AddLog($"Utracono gości: {_lostGuests}");
+            AddLog($"Reklamacje: {_returnedOrdersCount}");
             AddLog($"Całkowity przychód: {_totalRevenue:N2} zł");
             AddLog($"Całkowity czas: {CurrentTimeFormatted}");
         }
@@ -243,12 +305,14 @@ public class SimulationService : INotifyPropertyChanged
         ServedGuests = 0;
         LostGuests = 0;
         TotalRevenue = 0;
+        ReturnedOrdersCount = 0; // Reset licznika zwrotów
         _waitingGroups.Clear();
         _seatedGroups.Clear();
         _kitchenQueue.Clear();
         _preparingOrders.Clear();
         _readyOrders.Clear();
         _deliveredOrders.Clear();
+        _returnedOrders.Clear();
         _simulationLog.Clear();
         _orderedDishes.Clear();
         
@@ -271,6 +335,18 @@ public class SimulationService : INotifyPropertyChanged
         // Nierównomierny rozkład - bardziej prawdopodobne krótsze interwały
         double skewed = Math.Pow(u, 0.6); // skośność w kierunku mniejszych wartości
         return baseTime + (int)(skewed * (maxTime - baseTime));
+    }
+    
+    private void RecalculateNextArrival()
+    {
+        // Jeśli następne przybycie jest w przyszłości, dostosuj je do nowych parametrów
+        if (_nextGuestArrival > _currentTime)
+        {
+            // Oblicz nowy interwał i ustaw od bieżącego czasu
+            int newInterval = GetNextArrivalTime();
+            _nextGuestArrival = _currentTime + newInterval;
+            AddLog($"[{CurrentTimeFormatted}] Zaktualizowano czas następnego przybycia (interwał: {MinArrivalInterval}-{MaxArrivalInterval} min)");
+        }
     }
 
     private void SpawnGuestGroup()
@@ -466,7 +542,23 @@ public class SimulationService : INotifyPropertyChanged
 
     private void ProcessKitchen()
     {
-        // Kuchnia może przygotowywać max 3 zamówienia jednocześnie
+        // PRIORYTET: Najpierw zwrócone zamówienia (reklamacje)
+        while (_preparingOrders.Count < MaxConcurrentOrders && _returnedOrders.Any())
+        {
+            var returnedOrder = _returnedOrders[0];
+            _returnedOrders.RemoveAt(0);
+            
+            // Czas przygotowania dla zwróconego zamówienia - połowa normalnego czasu (szybkie naprawienie)
+            returnedOrder.PreparationStartTime = _currentTime;
+            returnedOrder.PreparationEndTime = _currentTime + Math.Max(1, returnedOrder.PreparationTime / 2);
+            returnedOrder.DeliveryTime = 0; // Reset czasu dostawy
+            returnedOrder.IsReturned = false; // Oznacz jako ponownie przygotowane
+            _preparingOrders.Add(returnedOrder);
+            
+            AddLog($"[{CurrentTimeFormatted}] 🔄 PRIORYTET: Kuchnia naprawia reklamowane zamówienie dla stolika {returnedOrder.TableNumber}");
+        }
+        
+        // Następnie normalne zamówienia
         while (_preparingOrders.Count < MaxConcurrentOrders && _kitchenQueue.Any())
         {
             var order = _kitchenQueue[0];
@@ -506,6 +598,17 @@ public class SimulationService : INotifyPropertyChanged
         ProcessDeliveredOrders();
     }
     
+    private static readonly string[] ReturnReasons = 
+    {
+        "zimna zupa",
+        "włos w jedzeniu",
+        "za długie oczekiwanie",
+        "pomylone zamówienie",
+        "niedogotowane danie",
+        "przypalone jedzenie",
+        "brak składnika"
+    };
+    
     private void ProcessReadyOrders()
     {
         var ordersToDeliver = new List<SimulationOrder>();
@@ -528,10 +631,46 @@ public class SimulationService : INotifyPropertyChanged
         {
             _readyOrders.Remove(order);
             _deliveredOrders.Add(order);
-            order.Group.State = GuestState.Eating;
-            order.Group.EatingEndTime = _currentTime + _random.Next(5, 31);
-            AddLog($"[{CurrentTimeFormatted}] Zamówienie dostarczone do stolika {order.TableNumber}");
+            
+            // Sprawdź czy klient jest zadowolony (szansa na reklamację)
+            // Zamówienia, które już były zwracane, nie mogą być ponownie zwrócone
+            if (order.ReturnCount == 0 && _random.Next(100) < _returnChancePercent)
+            {
+                // Klient niezadowolony - zwrot zamówienia!
+                HandleOrderReturn(order);
+            }
+            else
+            {
+                // Klient zadowolony - rozpoczyna jedzenie
+                order.Group.State = GuestState.Eating;
+                order.Group.EatingEndTime = _currentTime + _random.Next(5, 31);
+                AddLog($"[{CurrentTimeFormatted}] Zamówienie dostarczone do stolika {order.TableNumber}");
+            }
         }
+    }
+    
+    private void HandleOrderReturn(SimulationOrder order)
+    {
+        // Losowy powód zwrotu
+        var reason = ReturnReasons[_random.Next(ReturnReasons.Length)];
+        order.ReturnReason = reason;
+        order.IsReturned = true;
+        order.ReturnCount++;
+        
+        // Usunięcie z dostarczonych
+        _deliveredOrders.Remove(order);
+        
+        // Dodanie do kolejki zwrotów (priorytetowej)
+        _returnedOrders.Add(order);
+        
+        // Aktualizacja stanu grupy - wracają do czekania na jedzenie
+        order.Group.State = GuestState.WaitingForFood;
+        
+        // Aktualizacja statystyk
+        ReturnedOrdersCount++;
+        
+        AddLog($"[{CurrentTimeFormatted}] ⚠️ REKLAMACJA! Stolik {order.TableNumber} zwrócił zamówienie - powód: {reason}");
+        AddLog($"[{CurrentTimeFormatted}] 🔄 Zamówienie wraca do kuchni z priorytetem!");
     }
     
     private void ProcessDeliveredOrders()
@@ -564,6 +703,75 @@ public class SimulationService : INotifyPropertyChanged
     private void AddLog(string message)
     {
         _simulationLog.Add(message);
+    }
+    
+    /// <summary>
+    /// Sprawdza i obsługuje awarie kuchni - nieliniowość w systemie
+    /// Awaria powoduje drastyczne zmniejszenie przepustowości (bottleneck)
+    /// co prowadzi do wykładniczego wzrostu kolejki i sprzężenia zwrotnego
+    /// </summary>
+    private void CheckKitchenBreakdown()
+    {
+        // Sprawdź czy trwa awaria i czy już się skończyła
+        if (_isKitchenBreakdown && _currentTime >= _kitchenBreakdownTime)
+        {
+            // Koniec awarii - przywróć normalną przepustowość
+            _isKitchenBreakdown = false;
+            _maxConcurrentOrders = _normalMaxConcurrentOrders;
+            OnPropertyChanged(nameof(MaxConcurrentOrders));
+            
+            AddLog($"[{CurrentTimeFormatted}] ✅ NAPRAWA: Kuchnia wraca do pełnej sprawności! Przepustowość: {_maxConcurrentOrders}");
+            AddLog($"[{CurrentTimeFormatted}] 📊 NIELINIOWOŚĆ: Obserwuj jak system stopniowo wraca do równowagi");
+            
+            // Zaplanuj następną potencjalną awarię za 30-60 minut
+            _nextBreakdownCheck = _currentTime + _random.Next(30, 61);
+        }
+        // Sprawdź czy nie nastąpił czas sprawdzenia nowej awarii
+        else if (!_isKitchenBreakdown && _currentTime >= _nextBreakdownCheck)
+        {
+            // 30% szansy na awarię w tym momencie
+            if (_random.Next(100) < 30)
+            {
+                // Wystąpiła awaria!
+                _isKitchenBreakdown = true;
+                int breakdownDuration = _random.Next(10, 21); // 10-20 minut awarii
+                _kitchenBreakdownTime = _currentTime + breakdownDuration;
+                
+                // Drastyczne zmniejszenie przepustowości - bottleneck!
+                int reducedCapacity = Math.Max(1, _normalMaxConcurrentOrders / 3); // Zmniejsz do 1/3
+                _maxConcurrentOrders = reducedCapacity;
+                OnPropertyChanged(nameof(MaxConcurrentOrders));
+                
+                AddLog($"[{CurrentTimeFormatted}] 🔥 AWARIA KUCHNI! Piec przestał działać!");
+                AddLog($"[{CurrentTimeFormatted}] ⚠️ Przepustowość spadła z {_normalMaxConcurrentOrders} do {reducedCapacity} zamówień!");
+                AddLog($"[{CurrentTimeFormatted}] 🔧 Szacowany czas naprawy: {breakdownDuration} minut");
+                AddLog($"[{CurrentTimeFormatted}] 📈 NIELINIOWOŚĆ: Kolejka zacznie rosnąć wykładniczo (bottleneck)!");
+                
+                // Ostrzeżenie o sprzężeniu zwrotnym
+                if (_kitchenQueue.Count > 3)
+                {
+                    AddLog($"[{CurrentTimeFormatted}] ⚡ SPRZĘŻENIE ZWROTNE: Długa kolejka ({_kitchenQueue.Count}) + awaria = krytyczna sytuacja!");
+                }
+            }
+            else
+            {
+                // Nie było awarii, sprawdź ponownie za 15-30 minut
+                _nextBreakdownCheck = _currentTime + _random.Next(15, 31);
+            }
+        }
+        
+        // Monitoruj rosnącą kolejkę podczas awarii (efekt nieliniowy)
+        if (_isKitchenBreakdown && _kitchenQueue.Count > 5 && _currentTime % 5 == 0)
+        {
+            int minutesRemaining = _kitchenBreakdownTime - _currentTime;
+            AddLog($"[{CurrentTimeFormatted}] 📊 KRYTYCZNIE: Kolejka kuchni: {_kitchenQueue.Count} zamówień! Naprawa za {minutesRemaining} min");
+            
+            // Wzrost irytacji klientów - zwiększ szansę na reklamacje podczas awarii
+            if (_kitchenQueue.Count > 8)
+            {
+                AddLog($"[{CurrentTimeFormatted}] 😡 SPRZĘŻENIE: Długie oczekiwanie zwiększa irytację klientów!");
+            }
+        }
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;
@@ -610,6 +818,9 @@ public class SimulationOrder
     public int DeliveryTime { get; set; }
     public decimal TotalPrice { get; set; }
     public List<MenuItem> Items { get; set; } = new();
+    public bool IsReturned { get; set; } // Czy zamówienie zostało zwrócone (reklamacja)
+    public int ReturnCount { get; set; } // Ile razy zamówienie było zwracane
+    public string? ReturnReason { get; set; } // Powód zwrotu
 }
 
 public class SimulationResult
@@ -627,3 +838,7 @@ public class SimulationResult
         ? (double)ServedGuests / (ServedGuests + LostGuests) * 100 
         : 0;
 }
+
+
+
+

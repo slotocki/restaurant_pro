@@ -9,7 +9,7 @@ public interface IOrderState
     void Deliver(Order order);
     void Pay(Order order);
     void Cancel(Order order);
+    void Return(Order order); // Nowa metoda do zwrotu zamówienia
     bool CanModify { get; }
     bool CanCancel { get; }
 }
-

@@ -76,6 +76,7 @@ public class Order : INotifyPropertyChanged
     public void Deliver() => _state.Deliver(this);
     public void Pay() => _state.Pay(this);
     public void Cancel() => _state.Cancel(this);
+    public void Return() => _state.Return(this);
 
     public OrderMemento CreateMemento()
     {
@@ -98,4 +99,3 @@ public class Order : INotifyPropertyChanged
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
     }
 }
-

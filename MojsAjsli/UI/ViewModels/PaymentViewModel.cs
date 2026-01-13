@@ -137,15 +137,15 @@ public class PaymentViewModel : BaseViewModel
 
         var paymentType = _selectedPaymentMethodIndex switch
         {
-            0 => PaymentType.Cash,
-            1 => PaymentType.Card,
-            2 => PaymentType.Blik,
-            3 => PaymentType.BankTransfer,
-            _ => PaymentType.Cash
+            0 => PaymentMethodType.Cash,
+            1 => PaymentMethodType.Card,
+            2 => PaymentMethodType.Blik,
+            3 => PaymentMethodType.BankTransfer,
+            _ => PaymentMethodType.Cash
         };
 
         string? blikCode = null;
-        if (paymentType == PaymentType.Blik)
+        if (paymentType == PaymentMethodType.Blik)
         {
             blikCode = BlikCode;
             if (string.IsNullOrEmpty(blikCode) || blikCode.Length != 6)

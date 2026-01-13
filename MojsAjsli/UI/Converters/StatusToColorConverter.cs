@@ -43,6 +43,7 @@ public class OrderStateToColorConverter : IValueConverter
                 "W przygotowaniu" => new SolidColorBrush(Color.FromRgb(245, 124, 0)),
                 "Gotowe" => new SolidColorBrush(Color.FromRgb(158, 157, 36)),
                 "Dostarczone" => new SolidColorBrush(Color.FromRgb(175, 180, 43)),
+                "Zwrocone" => new SolidColorBrush(Color.FromRgb(244, 67, 54)), // Czerwony dla zwróconych
                 "Oplacone" => new SolidColorBrush(Color.FromRgb(121, 85, 72)),
                 "Anulowane" => new SolidColorBrush(Color.FromRgb(191, 54, 12)),
                 _ => new SolidColorBrush(Colors.Gray)
@@ -111,7 +112,6 @@ public class CategoryToIconConverter : IValueConverter
                 DishCategory.Dessert => "🍰",
                 DishCategory.Drink => "🥤",
                 DishCategory.Vegetarian => "🌱",
-                DishCategory.Special => "⭐",
                 _ => "?"
             };
         }
@@ -137,7 +137,6 @@ public class CategoryToNameConverter : IValueConverter
                 DishCategory.Dessert => "Desery",
                 DishCategory.Drink => "Napoje",
                 DishCategory.Vegetarian => "Wegetariańskie",
-                DishCategory.Special => "Specjały",
                 _ => "Inne"
             };
         }
@@ -163,7 +162,6 @@ public class CategoryToColorConverter : IValueConverter
                 DishCategory.Dessert => new SolidColorBrush(Color.FromRgb(215, 204, 200)),      // Jasny brąz
                 DishCategory.Drink => new SolidColorBrush(Color.FromRgb(161, 136, 127)),        // Piaskowy
                 DishCategory.Vegetarian => new SolidColorBrush(Color.FromRgb(158, 157, 36)),    // Oliwkowy
-                DishCategory.Special => new SolidColorBrush(Color.FromRgb(245, 124, 0)),        // Pomarańczowy
                 _ => new SolidColorBrush(Colors.Gray)
             };
         }

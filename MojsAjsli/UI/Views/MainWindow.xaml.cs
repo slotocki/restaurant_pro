@@ -144,12 +144,7 @@ public partial class MainWindow : Window
 
     private void UpdateStatisticsUI()
     {
-        DailyRevenueText.Text = _viewModel.StatisticsVM.DailyRevenue;
-        TodayOrdersText.Text = _viewModel.StatisticsVM.TodayOrders;
-        AverageOrderText.Text = _viewModel.StatisticsVM.AverageOrder;
-        FreeTablesText.Text = _viewModel.StatisticsVM.FreeTables;
-        OccupiedTablesText.Text = _viewModel.StatisticsVM.OccupiedTables;
-        TotalSeatsText.Text = _viewModel.StatisticsVM.TotalSeats;
+        // Statystyki zostały przeniesione do symulacji - usunięte niepotrzebne referencje
     }
 
     private void UpdateOrderUI()
@@ -166,9 +161,7 @@ public partial class MainWindow : Window
         _viewModel.KitchenVM.UpdateStatus();
         QueueCountText.Text = _viewModel.KitchenVM.QueueCount;
         PreparingCountText.Text = _viewModel.KitchenVM.PreparingCount;
-        KitchenQueueStatusText.Text = _viewModel.KitchenVM.QueueCount;
-        KitchenPreparingStatusText.Text = _viewModel.KitchenVM.PreparingCount;
-        EstimatedWaitText.Text = _viewModel.KitchenVM.EstimatedWaitTime;
+        // Usunięte odwołania do elementów ze Statystyk
     }
 
     private void UpdatePaymentSummaryUI()
@@ -277,6 +270,29 @@ public partial class MainWindow : Window
 
     #region Symulacja
 
+    private void RunSimulationButton_Click(object sender, RoutedEventArgs e)
+    {
+        // Odczytaj wartości z UI przed uruchomieniem symulacji
+        if (int.TryParse(SimulationDurationTextBox.Text, out int duration))
+        {
+            _viewModel.SimulationVM.Duration = duration;
+        }
+
+        // Odczytaj prędkość z ComboBox
+        if (SimulationSpeedComboBox.SelectedItem is ComboBoxItem selectedItem && 
+            selectedItem.Tag != null &&
+            int.TryParse(selectedItem.Tag.ToString(), out int speed))
+        {
+            _viewModel.SimulationVM.Speed = speed;
+        }
+
+        // Uruchom symulację
+        if (_viewModel.SimulationVM.RunCommand.CanExecute(null))
+        {
+            _viewModel.SimulationVM.RunCommand.Execute(null);
+        }
+    }
+
     private void StartSimulationUpdateTimer()
     {
         var simTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(500) };
@@ -288,7 +304,6 @@ public partial class MainWindow : Window
             SimLostText.Text = _viewModel.SimulationVM.LostGuests;
             SimRevenueText.Text = _viewModel.SimulationVM.TotalRevenue;
             SimServiceRateText.Text = _viewModel.SimulationVM.ServiceRate;
-            SimTopDishText.Text = _viewModel.SimulationVM.TopDish;
             SimStatusText.Text = _viewModel.SimulationVM.Status;
 
             SimulationLogListBox.ItemsSource = _viewModel.SimulationVM.Log;
