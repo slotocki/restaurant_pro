@@ -257,13 +257,13 @@ public class SimulationService : INotifyPropertyChanged
         
         // Przetwarzanie czekających gości
         ProcessWaitingGroups();
-        
+
         // Przetwarzanie usadzonych gości
         ProcessSeatedGroups();
-        
+
         // Przetwarzanie kuchni
         ProcessKitchen();
-        
+
         // Przetwarzanie przygotowywanych zamówień
         ProcessPreparingOrders();
         
@@ -593,7 +593,7 @@ public class SimulationService : INotifyPropertyChanged
         
         // Przetwarzanie zamówień gotowych do wydania (automatyczne dostarczanie po 1-2 minutach)
         ProcessReadyOrders();
-        
+
         // Przetwarzanie zamówień dostarczonych
         ProcessDeliveredOrders();
     }
@@ -662,7 +662,7 @@ public class SimulationService : INotifyPropertyChanged
         
         // Dodanie do kolejki zwrotów (priorytetowej)
         _returnedOrders.Add(order);
-        
+
         // Aktualizacja stanu grupy - wracają do czekania na jedzenie
         order.Group.State = GuestState.WaitingForFood;
         
@@ -704,7 +704,7 @@ public class SimulationService : INotifyPropertyChanged
     {
         _simulationLog.Add(message);
     }
-    
+
     /// <summary>
     /// Sprawdza i obsługuje awarie kuchni - nieliniowość w systemie
     /// Awaria powoduje drastyczne zmniejszenie przepustowości (bottleneck)

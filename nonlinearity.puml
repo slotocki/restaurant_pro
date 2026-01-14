@@ -1,0 +1,270 @@
+﻿@startuml MojsAjsli - Nieliniowości w Symulacji
+
+title Problem Złożony - Nieliniowości i Sprzężenia Zwrotne
+
+!define LOOP_COLOR #FFEBEE
+!define FEEDBACK_COLOR #FFF9C4
+!define BREAKDOWN_COLOR #FFCCBC
+
+' ============================================
+' NIELINIOWOŚĆ #1: Bottleneck Kuchni
+' ============================================
+
+package "Nieliniowość #1: System Kolejek i Awarie Kuchni" BREAKDOWN_COLOR {
+    
+    component "Normalna Przepustowość" as NormalFlow {
+        [MaxConcurrentOrders = 3]
+        [Czas przygotowania: 15-25 min]
+        [Kolejka: liniowy wzrost]
+    }
+    
+    component "AWARIA KUCHNI (losowo)" as Breakdown {
+        [Przepustowość → 1/3]
+        [MaxConcurrentOrders = 1]
+        [Czas przygotowania × 3]
+        [Kolejka: WYKŁADNICZY wzrost]
+    }
+    
+    NormalFlow -down-> Breakdown : CheckKitchenBreakdown()\n10% szans co minutę
+    
+    note right of Breakdown
+        **Efekt kaskadowy:**
+        Długa kolejka
+        ↓
+        Więcej niezadowolonych gości
+        ↓
+        Więcej reklamacji (Return)
+        ↓
+        Reklamacje z PRIORYTETEM
+        ↓
+        Jeszcze dłuższa kolejka
+        ↓
+        Jeszcze więcej reklamacji
+        **= SPIRALA W DÓŁ**
+    end note
+}
+
+' ============================================
+' NIELINIOWOŚĆ #2: Dynamika Gości
+' ============================================
+
+package "Nieliniowość #2: Dynamika Przybyć i Rezygnacji Gości" LOOP_COLOR {
+    
+    state "Oczekiwanie na Stolik" as Waiting {
+        Waiting : Losowy czas cierpliwości
+        Waiting : MinWaitTime = 5 min
+        Waiting : MaxWaitTime = 15 min
+        Waiting : patience = Random(5, 15)
+    }
+    
+    state "Sprawdzenie Dostępności" as Check {
+        Check : FreeTables.Count > 0?
+        Check : Table.Seats >= GroupSize?
+    }
+    
+    state "Obsłużeni Goście" as Served {
+        Served : ++ServedGuests
+        Served : Revenue += bill
+    }
+    
+    state "Utraceni Goście" as Lost {
+        Lost : ++LostGuests
+        Lost : Revenue -= potentialRevenue
+        Lost : **NIELINIOWOŚĆ:**
+        Lost : Straty rosną szybciej
+        Lost : niż zyski
+    }
+    
+    [*] --> Check : Goście przybywają
+    Check --> Waiting : Brak wolnych stolików
+    Check --> Served : Stolik dostępny
+    
+    Waiting --> Served : Stolik się zwolnił\n(czas < patience)
+    Waiting --> Lost : Zbyt długie oczekiwanie\n(czas >= patience)
+    
+    note right of Lost
+        **Rozkład przybyć:**
+        Nierównomierny (skośny)
+        Więcej gości w peak hours
+        
+        **Sprzężenie zwrotne:**
+        Więcej utraconych → Wolne stoliki
+        → Krótsze kolejki
+        ALE: Utrata przychodu nieodwracalna
+    end note
+}
+
+' ============================================
+' NIELINIOWOŚĆ #3: System Reklamacji
+' ============================================
+
+package "Nieliniowość #3: System Priorytetów Reklamacji" FEEDBACK_COLOR {
+    
+    object "Normalne Zamówienie" as NormalOrder {
+        Pozycja w kolejce: N
+        Czas oczekiwania: T
+        Szansa na reklamację: 5%
+    }
+    
+    object "Zamówienie ZWRÓCONE" as ReturnedOrder {
+        Pozycja w kolejce: 0 (PRIORYTET)
+        Wpływa na: WSZYSTKIE zamówienia
+        Opóźnienie dla innych: +T minutes
+    }
+    
+    NormalOrder -right-> ReturnedOrder : Return()\n5% probability
+    ReturnedOrder -down-> NormalOrder : Wszyscy czekają dłużej\nRyzyko kolejnych reklamacji ↑
+    
+    note bottom
+        **Efekt domina:**
+        1 reklamacja → opóźnia 10 zamówień
+        → ryzyko 2-3 kolejnych reklamacji
+        → opóźnia 20-30 zamówień
+        → jeszcze więcej reklamacji
+        
+        **To nieliniowość kwadratowa O(n²)**
+    end note
+}
+
+' ============================================
+' NIELINIOWOŚĆ #4: State Machine
+' ============================================
+
+package "Nieliniowość #4: Maszyna Stanów (Nieodwracalność)" {
+    
+    state "Nowe" as New #LightGreen {
+        New : CanModify = true
+        New : CanCancel = true
+    }
+    
+    state "Przyjęte" as Accepted #LightBlue {
+        Accepted : CanModify = false
+        Accepted : CanCancel = true
+    }
+    
+    state "W przygotowaniu" as Preparing #Orange {
+        Preparing : CanModify = false
+        Preparing : CanCancel = FALSE
+        Preparing : **PUNKT BEZ POWROTU**
+    }
+    
+    state "Gotowe" as Ready #Yellow
+    state "Dostarczone" as Delivered #Cyan
+    state "Zwrócone" as Returned #Red {
+        Returned : Wraca do kolejki
+        Returned : Z PRIORYTETEM
+    }
+    state "Opłacone" as Paid #LightGreen
+    state "Anulowane" as Cancelled #Gray
+    
+    [*] --> New
+    New --> Accepted : Accept()
+    New --> Cancelled : Cancel()
+    
+    Accepted --> Preparing : StartPreparing()
+    Accepted --> Cancelled : Cancel()
+    
+    Preparing --> Ready : MarkReady()
+    Ready --> Delivered : Deliver()
+    
+    Delivered --> Paid : Pay()
+    Delivered --> Returned : Return()
+    
+    Returned --> Preparing : Reprocess\n(PRIORYTET)
+    
+    note right of Preparing
+        **Nieliniowość decyzyjna:**
+        Po przekroczeniu stanu "Preparing"
+        nie można cofnąć zamówienia.
+        
+        Jedyna opcja: Return (reklamacja)
+        która wraca z PRIORYTETEM
+        i zaburza całą kolejkę.
+    end note
+}
+
+' ============================================
+' GŁÓWNY WYKRES SPRZĘŻEŃ
+' ============================================
+
+rectangle "SYMULACJA - Główne Sprzężenia Zwrotne" {
+    
+    component [Przepustowość\nKuchni] as Throughput
+    component [Długość\nKolejki] as QueueLength
+    component [Czas\nOczekiwania] as WaitTime
+    component [Reklamacje\n(Returns)] as Returns
+    component [Utraceni\nGoście] as LostGuests
+    component [Przychód] as Revenue
+    component [Awarie] as Breakdowns
+    
+    Throughput -down-> QueueLength : (-)
+    QueueLength -down-> WaitTime : (+)
+    WaitTime -down-> Returns : (+)
+    Returns -up-> QueueLength : (+) PRIORYTET
+    
+    WaitTime -right-> LostGuests : (+)
+    LostGuests -down-> Revenue : (-)
+    
+    Breakdowns -up-> Throughput : (-) × 3
+    QueueLength -right-> Breakdowns : (+) stres
+    
+    note bottom of Throughput
+        **(-) = wpływ negatywny**
+        **[+) = wpływ pozytywny**
+    end note
+    
+    note right of Returns
+        **GŁÓWNA NIELINIOWOŚĆ:**
+        
+        Returns = f(WaitTime, QueueLength)
+        
+        Ale Returns wpływa z powrotem
+        na QueueLength z PRIORYTETEM!
+        
+        **To tworzy pętlę dodatniego
+        sprzężenia zwrotnego:**
+        
+        Kolejka ↑ → Czas ↑ → Reklamacje ↑
+        → Kolejka ↑↑ → Czas ↑↑ → Reklamacje ↑↑
+        
+        **Wzrost wykładniczy!**
+    end note
+}
+
+' ============================================
+' METRYKI I PUNKTY KRYTYCZNE
+' ============================================
+
+cloud "Punkty Krytyczne (Tipping Points)" {
+    card "QueueLength > 10" as Tipping1 {
+        Ryzyko reklamacji: 5% → 15%
+        Czas oczekiwania: 20min → 45min
+        Utraceni goście: +300%
+    }
+    
+    card "Awaria podczas peak hour" as Tipping2 {
+        Efekt kaskadowy gwarantowany
+        Odzyskanie: 30-60 minut
+        Strata przychodu: 40-60%
+    }
+    
+    card "3+ reklamacje jednocześnie" as Tipping3 {
+        Blokada kolejki
+        Normalne zamówienia: +90min opóźnienia
+        Spirala w dół: nieodwracalna
+    }
+}
+
+legend bottom
+    **Podsumowanie Nieliniowości:**
+    
+    |<b>Typ</b> |<b>Mechanizm</b> |<b>Efekt</b> |
+    | Bottleneck kuchni | Awaria → przepustowość × 1/3 | Wykładniczy wzrost kolejki |
+    | Dynamika gości | Czas oczekiwania vs cierpliwość | Nieliniowa strata przychodu |
+    | System priorytetów | Reklamacje przeskakują kolejkę | Efekt domina O(n²) |
+    | Maszyna stanów | Nieodwracalne przejścia | Brak możliwości cofnięcia |
+    | Sprzężenie zwrotne | Kolejka → Reklamacje → Kolejka | Dodatnie sprzężenie (niestabilność) |
+end legend
+
+@enduml
+

@@ -1,0 +1,728 @@
+﻿@startuml MojsAjsli - System Zarządzania Restauracją
+
+!define PATTERN_COLOR #E1F5FE
+!define SERVICE_COLOR #FFF3E0
+!define MODEL_COLOR #F3E5F5
+!define UI_COLOR #E8F5E9
+
+title MojsAjsli - Architektura Systemu z Wzorcami Projektowych
+
+' ============================================
+' WZORZEC DECORATOR
+' ============================================
+package "Pattern: Decorator" <<Rectangle>> PATTERN_COLOR {
+    interface IDish {
+        +Name: string
+        +Price: decimal
+        +Description: string
+        +GetName(): string
+        +GetDescription(): string
+        +GetPrice(): decimal
+        +GetPreparationTime(): int
+    }
+    
+    class BaseDish implements IDish {
+        -_name: string
+        -_description: string
+        -_price: decimal
+        -_preparationTime: int
+    }
+    
+    abstract class DishDecorator implements IDish {
+        #_baseDish: IDish
+        +DishDecorator(baseDish: IDish)
+    }
+    
+    class Burger extends BaseDish
+    class Pizza extends BaseDish
+    class Pasta extends BaseDish
+    class Salad extends BaseDish
+    
+    class ExtraCheeseDecorator extends DishDecorator {
+        +GetDescription(): string
+        +GetPrice(): decimal
+    }
+    
+    class BaconDecorator extends DishDecorator {
+        +GetDescription(): string
+        +GetPrice(): decimal
+    }
+    
+    class SpicySauceDecorator extends DishDecorator
+    class GlutenFreeDecorator extends DishDecorator
+    class ExtraPortionDecorator extends DishDecorator
+    class VeganOptionDecorator extends DishDecorator
+    
+    DishDecorator o-- IDish
+}
+
+' ============================================
+' WZORZEC STATE
+' ============================================
+package "Pattern: State" <<Rectangle>> PATTERN_COLOR {
+    interface IOrderState {
+        +StateName: string
+        +CanModify: bool
+        +CanCancel: bool
+        +Accept(order: Order): void
+        +StartPreparing(order: Order): void
+        +MarkReady(order: Order): void
+        +Deliver(order: Order): void
+        +Pay(order: Order): void
+        +Cancel(order: Order): void
+        +Return(order: Order): void
+    }
+    
+    class Order {
+        +Id: int
+        +TableNumber: int
+        +Items: List<IDish>
+        +State: IOrderState
+        +TotalPrice: decimal
+        +EstimatedTime: int
+        +CreatedAt: DateTime
+        +CompletedAt: DateTime?
+        --
+        +AddItem(dish: IDish): void
+        +RemoveItem(dish: IDish): void
+        +Accept(): void
+        +StartPreparing(): void
+        +MarkReady(): void
+        +Deliver(): void
+        +Pay(): void
+        +Cancel(): void
+        +Return(): void
+        +CreateMemento(): OrderMemento
+        +RestoreFromMemento(memento): void
+    }
+    
+    class NewOrderState implements IOrderState {
+        +StateName = "Nowe"
+        +CanModify = true
+        +CanCancel = true
+    }
+    
+    class AcceptedState implements IOrderState {
+        +StateName = "Przyjęte"
+        +CanModify = false
+    }
+    
+    class PreparingState implements IOrderState {
+        +StateName = "W przygotowaniu"
+        +CanCancel = false
+    }
+    
+    class ReadyState implements IOrderState {
+        +StateName = "Gotowe"
+    }
+    
+    class DeliveredState implements IOrderState {
+        +StateName = "Dostarczone"
+    }
+    
+    class ReturnedState implements IOrderState {
+        +StateName = "Zwrócone"
+    }
+    
+    class PaidState implements IOrderState {
+        +StateName = "Opłacone"
+    }
+    
+    class CancelledState implements IOrderState {
+        +StateName = "Anulowane"
+    }
+    
+    Order *-- IOrderState
+    Order o-- IDish
+    
+    NewOrderState .> AcceptedState : transitions to
+    AcceptedState .> PreparingState : transitions to
+    PreparingState .> ReadyState : transitions to
+    ReadyState .> DeliveredState : transitions to
+    DeliveredState .> PaidState : transitions to
+    DeliveredState .> ReturnedState : returns
+    ReturnedState .> PreparingState : reprocesses
+}
+
+' ============================================
+' WZORZEC STRATEGY - PAYMENT
+' ============================================
+package "Pattern: Strategy (Payment)" <<Rectangle>> PATTERN_COLOR {
+    interface IPaymentStrategy {
+        +Name: string
+        +Type: PaymentMethodType
+        +ProcessPayment(amount: decimal): bool
+        +Refund(amount: decimal): bool
+        +GetTransactionId(): string
+    }
+    
+    enum PaymentMethodType {
+        Cash
+        Card
+        Blik
+        BankTransfer
+    }
+    
+    abstract class PaymentStrategyBase implements IPaymentStrategy {
+        #TransactionId: string
+        #GenerateTransactionId(prefix): string
+    }
+    
+    class CashPaymentStrategy extends PaymentStrategyBase {
+        +Type = PaymentMethodType.Cash
+    }
+    
+    class CardPaymentStrategy extends PaymentStrategyBase {
+        +Type = PaymentMethodType.Card
+    }
+    
+    class BlikPaymentStrategy extends PaymentStrategyBase {
+        +BlikCode: string
+        +Type = PaymentMethodType.Blik
+    }
+    
+    class BankTransferPaymentStrategy extends PaymentStrategyBase {
+        +AccountNumber: string
+        +Type = PaymentMethodType.BankTransfer
+    }
+    
+    IPaymentStrategy -- PaymentMethodType
+}
+
+' ============================================
+' WZORZEC STRATEGY - PRICING
+' ============================================
+package "Pattern: Strategy (Pricing)" <<Rectangle>> PATTERN_COLOR {
+    interface IPricingStrategy {
+        +Name: string
+        +Description: string
+        +CalculatePrice(order: Order): decimal
+        +GetDiscountPercentage(): decimal
+        +IsApplicable(order, time): bool
+    }
+    
+    class RegularPricingStrategy implements IPricingStrategy {
+        +Name = "Normalna cena"
+        +GetDiscountPercentage() = 0%
+    }
+    
+    class HappyHourStrategy implements IPricingStrategy {
+        +Name = "Happy Hour"
+        +GetDiscountPercentage() = 30%
+        -_startTime: TimeSpan
+        -_endTime: TimeSpan
+    }
+    
+    class LoyaltyCardStrategy implements IPricingStrategy {
+        +Name = "Karta stałego klienta"
+        +GetDiscountPercentage() = 15%
+    }
+    
+    class GroupDiscountStrategy implements IPricingStrategy {
+        +Name = "Zniżka grupowa"
+        +GetDiscountPercentage() = 10%
+        +GroupSize: int
+    }
+    
+    class StudentDiscountStrategy implements IPricingStrategy {
+        +Name = "Zniżka studencka"
+        +GetDiscountPercentage() = 20%
+    }
+    
+    class WeekendStrategy implements IPricingStrategy {
+        +Name = "Weekend"
+    }
+    
+    IPricingStrategy ..> Order : uses
+}
+
+' ============================================
+' WZORZEC MEDIATOR
+' ============================================
+package "Pattern: Mediator" <<Rectangle>> PATTERN_COLOR {
+    interface IRestaurantMediator {
+        +SendMessage(message, sender): void
+        +NotifyOrderPlaced(orderId, tableNumber): void
+        +NotifyOrderReady(orderId): void
+        +SendOrderToKitchen(order: Order): void
+        +NotifyOrderReady(order: Order): void
+        +NotifyOrderDelivered(order: Order): void
+        +RequestBill(tableNumber: int): void
+        +NotifyPaymentComplete(tableNumber, amount): void
+    }
+    
+    interface IColleague {
+        +Name: string
+        +SetMediator(mediator): void
+        +ReceiveNotification(message, data): void
+    }
+    
+    class RestaurantMediator implements IRestaurantMediator {
+        -_colleagues: List<IColleague>
+        +Register(colleague: IColleague): void
+        +Broadcast(message, data): void
+    }
+    
+    RestaurantMediator o-- IColleague
+    IColleague --> IRestaurantMediator : uses
+}
+
+' ============================================
+' WZORZEC MEMENTO
+' ============================================
+package "Pattern: Memento" <<Rectangle>> PATTERN_COLOR {
+    class OrderMemento {
+        +OrderId: int
+        +TableNumber: int
+        +Items: List<IDish>
+        +State: IOrderState
+        +CreatedAt: DateTime
+    }
+    
+    class OrderHistory {
+        -_undoStacks: Dictionary<int, Stack<OrderMemento>>
+        -_redoStacks: Dictionary<int, Stack<OrderMemento>>
+        +SaveState(order: Order): void
+        +CanUndo(orderId: int): bool
+        +CanRedo(orderId: int): bool
+        +Undo(order: Order): void
+        +Redo(order: Order): void
+        +ClearHistory(orderId: int): void
+    }
+    
+    OrderHistory o-- OrderMemento
+    Order ..> OrderMemento : creates
+    OrderMemento ..> IOrderState : stores
+    OrderMemento ..> IDish : stores
+}
+
+' ============================================
+' WZORZEC OBSERVER
+' ============================================
+package "Pattern: Observer" <<Rectangle>> PATTERN_COLOR {
+    interface "IObserver<T>" as IObserver {
+        +Update(data: T): void
+    }
+    
+    interface "ISubject<T>" as ISubject {
+        +Attach(observer: IObserver<T>): void
+        +Detach(observer: IObserver<T>): void
+        +Notify(data: T): void
+    }
+    
+    class OrderNotification {
+        +Message: string
+        +OrderId: int
+        +TableNumber: int
+        +Status: string
+        +Timestamp: DateTime
+    }
+    
+    class RestaurantNotificationSubject implements ISubject {
+        -_observers: List<IObserver<OrderNotification>>
+        +NotifyNewOrder(orderId, tableNumber): void
+        +NotifyOrderReady(orderId, tableNumber): void
+        +NotifyOrderDelivered(orderId, tableNumber): void
+    }
+    
+    ISubject o-- IObserver
+    RestaurantNotificationSubject ..> OrderNotification : creates
+}
+
+' ============================================
+' WZORZEC ITERATOR
+' ============================================
+package "Pattern: Iterator" <<Rectangle>> PATTERN_COLOR {
+    interface "IIterator<T>" as IIterator {
+        +HasNext(): bool
+        +Next(): T
+        +Reset(): void
+        +Current: T
+    }
+    
+    interface "IAggregate<T>" as IAggregate {
+        +CreateIterator(): IIterator<T>
+        +Count: int
+    }
+    
+    class MenuAggregate implements IAggregate {
+        -_items: List<MenuItem>
+        +AddItem(item: MenuItem): void
+        +RemoveItem(item: MenuItem): void
+        +CreateIterator(): IIterator<MenuItem>
+        +CreateCategoryIterator(category): IIterator<MenuItem>
+        +CreatePriceRangeIterator(min, max): IIterator<MenuItem>
+    }
+    
+    class MenuIterator implements IIterator {
+        -_items: List<MenuItem>
+        -_position: int
+    }
+    
+    class CategoryIterator implements IIterator {
+        -_filteredItems: List<MenuItem>
+        -_position: int
+    }
+    
+    class PriceRangeIterator implements IIterator {
+        -_filteredItems: List<MenuItem>
+        -_position: int
+    }
+    
+    MenuAggregate ..> MenuIterator : creates
+    MenuAggregate ..> CategoryIterator : creates
+    MenuAggregate ..> PriceRangeIterator : creates
+}
+
+' ============================================
+' MODELS
+' ============================================
+package "Models" <<Rectangle>> MODEL_COLOR {
+    enum DishCategory {
+        Appetizer
+        MainCourse
+        Dessert
+        Drink
+        Vegetarian
+    }
+    
+    class MenuItem {
+        +Name: string
+        +BasePrice: decimal
+        +Category: DishCategory
+        +Description: string
+        +PreparationTimeMinutes: int
+    }
+    
+    enum TableStatus {
+        Free
+        Occupied
+        Reserved
+        NeedsCleaning
+    }
+    
+    class Table {
+        +Number: int
+        +Seats: int
+        +Status: TableStatus
+        +OccupiedSeats: int
+        +CanSeat(guests: int): bool
+        +Occupy(guests: int): void
+        +Free(): void
+        +Clean(): void
+    }
+    
+    class Payment {
+        +Amount: decimal
+        +PaymentMethod: PaymentMethodType
+        +TransactionId: string
+        +IsSuccessful: bool
+        +Timestamp: DateTime
+    }
+    
+    MenuItem -- DishCategory
+    Table -- TableStatus
+    Payment -- PaymentMethodType
+}
+
+' ============================================
+' SERVICES
+' ============================================
+package "Services" <<Rectangle>> SERVICE_COLOR {
+    interface ITableService {
+        +Tables: ObservableCollection<Table>
+        +GetTable(number: int): Table?
+        +GetFreeTables(): List<Table>
+        +SeatGuests(tableNumber, guestCount): bool
+        +FreeTable(tableNumber: int): void
+        +CleanTable(tableNumber: int): void
+    }
+    
+    class TableService implements ITableService {
+        -_tables: ObservableCollection<Table>
+        -InitializeTables(): void
+    }
+    
+    interface IMenuQueryService {
+        +GetAllItems(): List<MenuItem>
+        +GetItemsByCategory(category): List<MenuItem>
+        +GetItemsInPriceRange(min, max): List<MenuItem>
+        +MenuItemsCount: int
+    }
+    
+    interface IDishFactory {
+        +CreateDish(menuItem: MenuItem): IDish
+        +CreateDishWithExtras(menuItem, extras): IDish
+    }
+    
+    enum DishExtra {
+        ExtraCheese
+        Bacon
+        SpicySauce
+        GlutenFree
+        ExtraPortion
+        VeganOption
+    }
+    
+    class DishFactory implements IDishFactory {
+        -_decoratorMap: Dictionary<DishExtra, Func<IDish, IDish>>
+    }
+    
+    interface IMenuService {
+        +{method} IMenuQueryService methods
+        +{method} IDishFactory methods
+    }
+    
+    class MenuService implements IMenuService {
+        -_instance: MenuService {static}
+        -_menu: MenuAggregate
+        -_queryService: IMenuQueryService
+        -_dishFactory: IDishFactory
+        +Instance: MenuService {static}
+        -InitializeMenu(): void
+    }
+    
+    class KitchenService implements IColleague {
+        -_mediator: IRestaurantMediator
+        -_orderQueue: ObservableCollection<Order>
+        -_preparingOrders: ObservableCollection<Order>
+        +OrderQueue: ObservableCollection<Order>
+        +PreparingOrders: ObservableCollection<Order>
+        +StartPreparing(order: Order): void
+        +CompleteOrder(order: Order): void
+        +EstimateWaitTime(): TimeSpan
+    }
+    
+    class WaiterService implements IColleague {
+        -_mediator: IRestaurantMediator
+        -_waiterName: string
+        -_activeOrders: ObservableCollection<Order>
+        -_readyOrders: ObservableCollection<Order>
+        -_orderHistory: OrderHistory
+        +CreateOrder(tableNumber: int): Order
+        +AddItemToOrder(order, dish): void
+        +RemoveItemFromOrder(order, dish): void
+        +UndoLastAction(order: Order): void
+        +RedoAction(order: Order): void
+        +SubmitOrder(order: Order): void
+        +DeliverOrder(order: Order): void
+    }
+    
+    class CashierService implements IColleague {
+        -_mediator: IRestaurantMediator
+        -_paymentStrategies: List<IPaymentStrategy>
+        -_pricingStrategies: List<IPricingStrategy>
+        -_currentStrategy: IPricingStrategy
+        -_transactionHistory: List<Payment>
+        +SetPricingStrategy(strategy): void
+        +GetBestApplicableStrategy(order, groupSize): IPricingStrategy
+        +CalculateBill(order: Order): decimal
+        +ProcessPayment(order, paymentType, blikCode?): Payment
+        +GetDailyRevenue(): decimal
+    }
+    
+    class StatisticsService {
+        -_completedOrders: List<Order>
+        -_dishPopularity: Dictionary<string, int>
+        -_totalRevenue: decimal
+        +RecordCompletedOrder(order, paidAmount): void
+        +GetTotalRevenue(): decimal
+        +GetDailyRevenue(date: DateTime): decimal
+        +GetDishPopularity(): Dictionary<string, int>
+        +GetTopDishes(count: int): List<(string, int)>
+        +GetAverageOrderTime(): TimeSpan
+        +GetAverageOrderValue(): decimal
+    }
+    
+    class SimulationService {
+        -_tableService: TableService
+        -_menuService: MenuService
+        -_mediator: RestaurantMediator
+        -_statistics: StatisticsService
+        -_random: Random
+        -_simulationLog: ObservableCollection<string>
+        --
+        ' Parametry symulacji
+        +MinArrivalInterval: int
+        +MaxArrivalInterval: int
+        +MinGroupSize: int
+        +MaxGroupSize: int
+        +MaxConcurrentOrders: int
+        +ReturnChancePercent: int
+        --
+        +RunSimulation(durationMinutes: int): Task
+        +StopSimulation(): void
+        -ProcessGuestArrival(): void
+        -CreateRandomOrder(tableNumber): Order
+        -ProcessKitchenQueue(): void
+        -CheckKitchenBreakdown(): void
+        -ProcessReturns(): void
+    }
+    
+    IMenuService --|> IMenuQueryService
+    IMenuService --|> IDishFactory
+    
+    TableService o-- Table
+    MenuService o-- MenuAggregate
+    MenuService --> IMenuQueryService
+    MenuService --> IDishFactory
+    DishFactory ..> IDish : creates
+    DishFactory ..> DishDecorator : creates
+    
+    KitchenService o-- Order
+    WaiterService o-- Order
+    WaiterService o-- OrderHistory
+    CashierService o-- IPaymentStrategy
+    CashierService o-- IPricingStrategy
+    CashierService o-- Payment
+    StatisticsService o-- Order
+    
+    SimulationService --> TableService
+    SimulationService --> MenuService
+    SimulationService --> RestaurantMediator
+    SimulationService --> StatisticsService
+    SimulationService --> KitchenService
+    SimulationService --> WaiterService
+    SimulationService --> CashierService
+}
+
+' ============================================
+' UI LAYER (MVVM)
+' ============================================
+package "UI (MVVM)" <<Rectangle>> UI_COLOR {
+    abstract class BaseViewModel {
+        +PropertyChanged: event
+        #SetProperty<T>(ref field, value, propertyName): bool
+        #OnPropertyChanged(propertyName): void
+    }
+    
+    class RelayCommand {
+        -_execute: Action
+        -_canExecute: Func<bool>
+        +Execute(parameter): void
+        +CanExecute(parameter): bool
+    }
+    
+    class MainViewModel extends BaseViewModel {
+        -_tableService: TableService
+        -_menuService: MenuService
+        -_simulationService: SimulationService
+        +SimulationViewModel: SimulationViewModel
+        +KitchenViewModel: KitchenViewModel
+        +StatisticsViewModel: StatisticsViewModel
+    }
+    
+    class SimulationViewModel extends BaseViewModel {
+        -_simulationService: SimulationService
+        +Duration: int
+        +Speed: int
+        +Status: string
+        +CanRun: bool
+        +CanStop: bool
+        +ServedGuests: string
+        +LostGuests: string
+        +TotalRevenue: string
+        +RunCommand: ICommand
+        +StopCommand: ICommand
+    }
+    
+    class KitchenViewModel extends BaseViewModel {
+        -_kitchenService: KitchenService
+        +OrderQueue: ObservableCollection<Order>
+        +PreparingOrders: ObservableCollection<Order>
+        +QueueLength: int
+    }
+    
+    class StatisticsViewModel extends BaseViewModel {
+        -_statisticsService: StatisticsService
+        +TotalRevenue: decimal
+        +TodayRevenue: decimal
+        +TotalOrders: int
+        +TopDishes: List<(string, int)>
+    }
+    
+    MainViewModel --> SimulationViewModel
+    MainViewModel --> KitchenViewModel
+    MainViewModel --> StatisticsViewModel
+    
+    SimulationViewModel --> SimulationService
+    KitchenViewModel --> KitchenService
+    StatisticsViewModel --> StatisticsService
+}
+
+' ============================================
+' RELACJE MIĘDZY PAKIETAMI
+' ============================================
+
+' Mediator rejestruje serwisy
+RestaurantMediator --> KitchenService : registers
+RestaurantMediator --> WaiterService : registers
+RestaurantMediator --> CashierService : registers
+
+' Menu używa MenuItem i Iterator
+MenuAggregate o-- MenuItem
+MenuIterator ..> MenuItem : iterates
+
+' Dish Factory używa MenuItem
+DishFactory ..> MenuItem : uses
+
+' Services używają wzorców
+WaiterService ..> OrderHistory : uses
+CashierService ..> IPaymentStrategy : uses
+CashierService ..> IPricingStrategy : uses
+
+note top of SimulationService
+  <b>Główny kontroler symulacji</b>
+  
+  Nieliniowości:
+  • Awarie kuchni (przepustowość 1/3)
+  • Losowy rozkład przybyć gości
+  • System priorytetów reklamacji
+  • Sprzężenia zwrotne kolejek
+end note
+
+note right of IOrderState
+  <b>Wzorzec State</b>
+  
+  8 stanów cyklu życia zamówienia:
+  New → Accepted → Preparing → Ready
+  → Delivered → Paid
+  
+  Dodatkowe: Returned, Cancelled
+end note
+
+note right of DishDecorator
+  <b>Wzorzec Decorator</b>
+  
+  Dynamiczne dodawanie dodatków:
+  • Extra ser (+3 zł)
+  • Bekon (+5 zł)
+  • Ostry sos (+2 zł)
+  • Bezglutenowe (+4 zł)
+  • Duża porcja (+50%)
+  • Wersja wegańska (+3 zł)
+end note
+
+note top of IRestaurantMediator
+  <b>Wzorzec Mediator</b>
+  
+  Centralna komunikacja między:
+  Kitchen ↔ Waiter ↔ Cashier
+  
+  Eliminuje bezpośrednie zależności
+end note
+
+note bottom of IPricingStrategy
+  <b>Wzorzec Strategy</b>
+  
+  6 strategii wyceny:
+  • Regular (0%)
+  • Happy Hour (30%, 15:00-18:00)
+  • Loyalty (15%)
+  • Group (10%, 5+ osób)
+  • Student (20%)
+  • Weekend
+end note
+
+@enduml
+

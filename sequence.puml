@@ -1,0 +1,267 @@
+﻿@startuml MojsAjsli - Przepływ Zamówienia
+
+title Diagram Sekwencji - Pełny Cykl Życia Zamówienia
+
+actor Gość
+participant "UI\nMainViewModel" as UI
+participant "WaiterService" as Waiter
+participant "RestaurantMediator" as Mediator
+participant "KitchenService" as Kitchen
+participant "Order\n(State)" as Order
+participant "CashierService" as Cashier
+participant "StatisticsService" as Stats
+participant "TableService" as Tables
+
+== 1. Przybycie Gości ==
+
+Gość -> UI: Grupa 4 osób przychodzi
+UI -> Tables: SeatGuests(tableNumber=5, guests=4)
+activate Tables
+Tables -> Tables: table.Occupy(4)
+Tables --> UI: true (stolik zajęty)
+deactivate Tables
+
+== 2. Tworzenie Zamówienia ==
+
+UI -> Waiter: CreateOrder(tableNumber=5)
+activate Waiter
+Waiter -> Order**: new Order(5)
+activate Order
+Order -> Order: State = NewOrderState
+Order --> Waiter: order
+Waiter -> Waiter: _activeOrders.Add(order)
+Waiter --> UI: order
+deactivate Waiter
+
+== 3. Dodawanie Pozycji (z Decorator) ==
+
+UI -> Waiter: AddItemToOrder(order, burger)
+activate Waiter
+Waiter -> Order: AddItem(burger)
+activate Order
+Order -> Order: State.CanModify?
+alt CanModify = true
+    Order -> Order: Items.Add(burger)
+    Order -> Order: CreateMemento() (Memento)
+    Order --> Waiter: OK
+else CanModify = false
+    Order --> Waiter: InvalidOperationException
+end
+deactivate Order
+deactivate Waiter
+
+note right of Order
+    Burger z dodatkami (Decorator):
+    BaseDish → ExtraCheeseDecorator
+    → BaconDecorator = 33 zł
+end note
+
+== 4. Wysłanie do Kuchni ==
+
+UI -> Waiter: SubmitOrder(order)
+activate Waiter
+Waiter -> Mediator: SendOrderToKitchen(order)
+activate Mediator
+Mediator -> Order: Accept()
+activate Order
+Order -> Order: State.Accept(this)
+Order -> Order: State = AcceptedState
+Order --> Mediator: OK
+deactivate Order
+
+Mediator -> Kitchen: ReceiveNotification("NewOrder", order)
+activate Kitchen
+Kitchen -> Kitchen: _orderQueue.Add(order)
+Kitchen --> Mediator: OK
+deactivate Kitchen
+
+Mediator -> Mediator: Broadcast("Zamówienie #X wysłane...")
+Mediator --> Waiter: OK
+deactivate Mediator
+deactivate Waiter
+
+== 5. Przygotowanie w Kuchni ==
+
+Kitchen -> Kitchen: StartPreparing(order)
+activate Kitchen
+Kitchen -> Order: StartPreparing()
+activate Order
+Order -> Order: State = PreparingState
+Order --> Kitchen: OK
+deactivate Order
+Kitchen -> Kitchen: _preparingOrders.Add(order)
+Kitchen -> Kitchen: (symulacja czasu przygotowania)
+deactivate Kitchen
+
+note right of Kitchen
+    Podczas awarii kuchni:
+    - Przepustowość 1/3
+    - Kolejka rośnie wykładniczo
+    - Ryzyko reklamacji ↑
+end note
+
+== 6. Zamówienie Gotowe ==
+
+Kitchen -> Kitchen: CompleteOrder(order)
+activate Kitchen
+Kitchen -> Mediator: NotifyOrderReady(order)
+activate Mediator
+Mediator -> Order: MarkReady()
+activate Order
+Order -> Order: State = ReadyState
+Order --> Mediator: OK
+deactivate Order
+
+Mediator -> Waiter: ReceiveNotification("OrderReady", order)
+activate Waiter
+Waiter -> Waiter: _readyOrders.Add(order)
+Waiter --> Mediator: OK
+deactivate Waiter
+
+Mediator --> Kitchen: OK
+deactivate Mediator
+deactivate Kitchen
+
+== 7. Dostarczenie do Stolika ==
+
+UI -> Waiter: DeliverOrder(order)
+activate Waiter
+Waiter -> Mediator: NotifyOrderDelivered(order)
+activate Mediator
+Mediator -> Order: Deliver()
+activate Order
+Order -> Order: State = DeliveredState
+Order --> Mediator: OK
+deactivate Order
+Mediator --> Waiter: OK
+deactivate Mediator
+deactivate Waiter
+
+== 7a. NIELINIOWOŚĆ: Reklamacja (5% szans) ==
+
+opt Reklamacja (losowo 5%)
+    Gość -> UI: Reklamacja!
+    UI -> Order: Return()
+    activate Order
+    Order -> Order: State = ReturnedState
+    Order --> UI: OK
+    deactivate Order
+    
+    UI -> Mediator: SendOrderToKitchen(order) [PRIORYTET]
+    activate Mediator
+    Mediator -> Kitchen: ReceiveNotification("NewOrder", order)
+    activate Kitchen
+    Kitchen -> Kitchen: _orderQueue.Insert(0, order) [PRIORYTET]
+    Kitchen --> Mediator: OK
+    deactivate Kitchen
+    deactivate Mediator
+    
+    note right
+        Reklamacje przeskakują kolejkę!
+        To wydłuża czas oczekiwania
+        dla pozostałych zamówień.
+    end note
+end
+
+== 8. Prośba o Rachunek ==
+
+Gość -> UI: Poproszę rachunek
+UI -> Waiter: RequestBill(tableNumber=5)
+activate Waiter
+Waiter -> Mediator: RequestBill(5)
+activate Mediator
+Mediator -> Cashier: ReceiveNotification("BillRequest", 5)
+activate Cashier
+Cashier --> Mediator: OK
+deactivate Cashier
+deactivate Mediator
+deactivate Waiter
+
+== 9. Obliczenie Rachunku (Strategy) ==
+
+UI -> Cashier: GetBestApplicableStrategy(order, groupSize=4)
+activate Cashier
+Cashier -> Cashier: Check all strategies
+alt Happy Hour (15:00-18:00)
+    Cashier -> Cashier: _currentStrategy = HappyHourStrategy (30%)
+else Group Discount (4 >= 5?)
+    Cashier -> Cashier: _currentStrategy = RegularPricingStrategy (0%)
+end
+Cashier --> UI: strategy
+deactivate Cashier
+
+UI -> Cashier: CalculateBill(order)
+activate Cashier
+Cashier -> Cashier: _currentStrategy.CalculatePrice(order)
+Cashier --> UI: 33 zł (bez zniżki)
+deactivate Cashier
+
+note right of Cashier
+    Wzorzec Strategy pozwala
+    dynamicznie wybierać algorytm
+    wyceny w runtime
+end note
+
+== 10. Płatność ==
+
+Gość -> UI: Płacę kartą
+UI -> Cashier: ProcessPayment(order, PaymentMethodType.Card)
+activate Cashier
+Cashier -> Cashier: strategy = _paymentStrategies.Find(Card)
+Cashier -> Cashier: strategy.ProcessPayment(33.00)
+Cashier -> Order: Pay()
+activate Order
+Order -> Order: State = PaidState
+Order -> Order: CompletedAt = Now
+Order --> Cashier: OK
+deactivate Order
+
+Cashier -> Cashier: _transactionHistory.Add(payment)
+Cashier -> Mediator: NotifyPaymentComplete(5, 33.00)
+activate Mediator
+Mediator -> Mediator: Broadcast("Płatność zrealizowana...")
+Mediator --> Cashier: OK
+deactivate Mediator
+
+Cashier --> UI: Payment (IsSuccessful=true)
+deactivate Cashier
+
+== 11. Statystyki i Zwolnienie Stolika ==
+
+UI -> Stats: RecordCompletedOrder(order, 33.00)
+activate Stats
+Stats -> Stats: _completedOrders.Add(order)
+Stats -> Stats: _totalRevenue += 33.00
+Stats -> Stats: _dishPopularity["Burger"]++
+Stats --> UI: OK
+deactivate Stats
+
+UI -> Tables: FreeTable(5)
+activate Tables
+Tables -> Tables: table.Status = NeedsCleaning
+Tables --> UI: OK
+deactivate Tables
+
+UI -> Tables: CleanTable(5)
+activate Tables
+Tables -> Tables: table.Status = Free
+Tables --> UI: OK
+deactivate Tables
+
+Gość -> Gość: Wychodzi zadowolony
+
+== Podsumowanie Wzorców ==
+
+note over UI, Stats
+    **Wykorzystane wzorce:**
+    • **State** - przejścia Order przez stany
+    • **Decorator** - dodatki do burgerа
+    • **Mediator** - komunikacja Kitchen-Waiter-Cashier
+    • **Strategy** - wybór strategii płatności i wyceny
+    • **Memento** - historia zmian (Undo/Redo)
+    • **Observer** - powiadomienia (nie pokazane dla czytelności)
+    • **Iterator** - przeglądanie menu (nie pokazane)
+end note
+
+@enduml
+

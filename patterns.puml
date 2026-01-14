@@ -1,0 +1,298 @@
+﻿@startuml MojsAjsli - Wzorce Projektowe
+
+title Wzorce Projektowe w Systemie MojsAjsli
+
+' ============================================
+' DECORATOR PATTERN
+' ============================================
+package "1. DECORATOR - Dynamiczne dodawanie funkcjonalności" {
+    interface IDish {
+        +GetName(): string
+        +GetPrice(): decimal
+        +GetDescription(): string
+    }
+    
+    class BaseDish implements IDish
+    
+    abstract class DishDecorator implements IDish {
+        #_baseDish: IDish
+    }
+    
+    class ExtraCheeseDecorator extends DishDecorator
+    class BaconDecorator extends DishDecorator
+    
+    DishDecorator o-right- IDish
+    
+    note right of DishDecorator
+        Burger (25 zł)
+        + ExtraCheese (+3 zł)
+        + Bacon (+5 zł)
+        = 33 zł
+    end note
+}
+
+' ============================================
+' STATE PATTERN
+' ============================================
+package "2. STATE - Cykl życia zamówienia" {
+    class Order {
+        -_state: IOrderState
+        +Accept()
+        +StartPreparing()
+        +MarkReady()
+        +Deliver()
+        +Pay()
+    }
+    
+    interface IOrderState {
+        +StateName: string
+        +CanModify: bool
+        +Accept(Order)
+        +StartPreparing(Order)
+        +MarkReady(Order)
+    }
+    
+    class NewOrderState implements IOrderState
+    class AcceptedState implements IOrderState
+    class PreparingState implements IOrderState
+    class ReadyState implements IOrderState
+    class DeliveredState implements IOrderState
+    class PaidState implements IOrderState
+    class ReturnedState implements IOrderState
+    
+    Order *-- IOrderState
+    
+    NewOrderState -right-> AcceptedState : Accept()
+    AcceptedState -right-> PreparingState : StartPreparing()
+    PreparingState -right-> ReadyState : MarkReady()
+    ReadyState --> DeliveredState : Deliver()
+    DeliveredState --> PaidState : Pay()
+    DeliveredState --> ReturnedState : Return()
+    ReturnedState --> PreparingState : reprocess
+}
+
+' ============================================
+' STRATEGY PATTERN
+' ============================================
+package "3. STRATEGY - Wymienne algorytmy" {
+    class CashierService {
+        -_currentStrategy: IPricingStrategy
+        +SetPricingStrategy(strategy)
+        +CalculateBill(order): decimal
+    }
+    
+    interface IPricingStrategy {
+        +CalculatePrice(order): decimal
+        +GetDiscountPercentage(): decimal
+    }
+    
+    class RegularPricingStrategy implements IPricingStrategy {
+        +GetDiscountPercentage() = 0%
+    }
+    
+    class HappyHourStrategy implements IPricingStrategy {
+        +GetDiscountPercentage() = 30%
+    }
+    
+    class LoyaltyCardStrategy implements IPricingStrategy {
+        +GetDiscountPercentage() = 15%
+    }
+    
+    class StudentDiscountStrategy implements IPricingStrategy {
+        +GetDiscountPercentage() = 20%
+    }
+    
+    CashierService o-right- IPricingStrategy
+    
+    note bottom of IPricingStrategy
+        W runtime można zmienić strategię:
+        cashier.SetPricingStrategy(new HappyHourStrategy())
+    end note
+}
+
+' ============================================
+' MEDIATOR PATTERN
+' ============================================
+package "4. MEDIATOR - Centralizacja komunikacji" {
+    interface IRestaurantMediator {
+        +SendOrderToKitchen(order)
+        +NotifyOrderReady(order)
+        +NotifyPaymentComplete(table, amount)
+    }
+    
+    class RestaurantMediator implements IRestaurantMediator {
+        -_colleagues: List<IColleague>
+        +Register(colleague)
+        +Broadcast(message)
+    }
+    
+    interface IColleague {
+        +SetMediator(mediator)
+        +ReceiveNotification(message, data)
+    }
+    
+    class KitchenService implements IColleague
+    class WaiterService implements IColleague
+    class CashierService2 implements IColleague
+    
+    RestaurantMediator o-- IColleague
+    
+    note top of RestaurantMediator
+        Zamiast:
+        Kitchen → Waiter
+        Kitchen → Cashier
+        Waiter → Kitchen
+        
+        Teraz wszystko przez Mediator
+    end note
+}
+
+' ============================================
+' OBSERVER PATTERN
+' ============================================
+package "5. OBSERVER - Powiadamianie subskrybentów" {
+    interface "ISubject<T>" as ISubject {
+        +Attach(observer)
+        +Detach(observer)
+        +Notify(data)
+    }
+    
+    interface "IObserver<T>" as IObserver {
+        +Update(data)
+    }
+    
+    class RestaurantNotificationSubject implements ISubject {
+        -_observers: List<IObserver>
+        +NotifyNewOrder(id, table)
+        +NotifyOrderReady(id, table)
+    }
+    
+    class NotificationViewModel implements IObserver {
+        +Update(notification)
+    }
+    
+    ISubject o-- IObserver
+    RestaurantNotificationSubject ..> NotificationViewModel : notifies
+    
+    note right of ISubject
+        Jeden subject może powiadamiać
+        wielu observerów jednocześnie
+    end note
+}
+
+' ============================================
+' MEMENTO PATTERN
+' ============================================
+package "6. MEMENTO - Undo/Redo" {
+    class Order2 {
+        +CreateMemento(): OrderMemento
+        +RestoreFromMemento(memento)
+    }
+    
+    class OrderMemento {
+        +OrderId: int
+        +Items: List<IDish>
+        +State: IOrderState
+        +CreatedAt: DateTime
+    }
+    
+    class OrderHistory {
+        -_undoStacks: Dictionary<int, Stack<OrderMemento>>
+        -_redoStacks: Dictionary<int, Stack<OrderMemento>>
+        +SaveState(order)
+        +Undo(order)
+        +Redo(order)
+    }
+    
+    Order2 ..> OrderMemento : creates
+    OrderHistory o-- OrderMemento
+    
+    note bottom of OrderHistory
+        Każda zmiana zamówienia jest zapisywana.
+        Możliwy Undo/Redo bez utraty danych.
+    end note
+}
+
+' ============================================
+' ITERATOR PATTERN
+' ============================================
+package "7. ITERATOR - Sekwencyjny dostęp" {
+    interface "IAggregate<T>" as IAggregate {
+        +CreateIterator(): IIterator<T>
+    }
+    
+    interface "IIterator<T>" as IIterator {
+        +HasNext(): bool
+        +Next(): T
+        +Reset()
+    }
+    
+    class MenuAggregate implements IAggregate {
+        -_items: List<MenuItem>
+        +CreateIterator()
+        +CreateCategoryIterator(category)
+        +CreatePriceRangeIterator(min, max)
+    }
+    
+    class MenuIterator implements IIterator
+    class CategoryIterator implements IIterator
+    class PriceRangeIterator implements IIterator
+    
+    MenuAggregate ..> MenuIterator : creates
+    MenuAggregate ..> CategoryIterator : creates
+    MenuAggregate ..> PriceRangeIterator : creates
+    
+    note right of MenuAggregate
+        Różne sposoby iteracji:
+        • Wszystkie pozycje
+        • Filtr po kategorii
+        • Filtr po cenie
+    end note
+}
+
+' ============================================
+' BONUS: FACADE + SINGLETON
+' ============================================
+package "BONUS: FACADE + SINGLETON" {
+    interface IMenuQueryService {
+        +GetAllItems()
+        +GetItemsByCategory()
+    }
+    
+    interface IDishFactory {
+        +CreateDish()
+        +CreateDishWithExtras()
+    }
+    
+    class MenuService implements IMenuQueryService, IDishFactory {
+        -{static} _instance: MenuService
+        +{static} Instance: MenuService
+        -MenuService()
+        --
+        Facade dla:
+        • IMenuQueryService
+        • IDishFactory
+    }
+    
+    note bottom of MenuService
+        SINGLETON: Tylko jedna instancja
+        FACADE: Uproszczony interfejs
+        do wielu podsystemów
+    end note
+}
+
+legend right
+    |<b>Wzorzec</b> |<b>Typ</b> |<b>Zastosowanie w projekcie</b> |
+    | Decorator | Strukturalny | Dodatki do dań (ser, bekon, etc.) |
+    | State | Behawioralny | Cykl życia zamówienia (8 stanów) |
+    | Strategy | Behawioralny | Płatności (4) + Wycena (6 strategii) |
+    | Mediator | Behawioralny | Komunikacja Kitchen-Waiter-Cashier |
+    | Observer | Behawioralny | Powiadomienia o zdarzeniach |
+    | Memento | Behawioralny | Historia zmian zamówień (Undo/Redo) |
+    | Iterator | Behawioralny | Przeglądanie menu z filtrami |
+    | Facade | Strukturalny | MenuService jako uproszczony interfejs |
+    | Singleton | Kreacyjny | MenuService - jedna instancja |
+end legend
+
+@enduml
+
