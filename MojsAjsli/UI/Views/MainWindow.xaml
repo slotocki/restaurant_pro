@@ -65,12 +65,13 @@
             <TabItem Header="Sala">
                 <Grid>
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="3*"/>
+                        <ColumnDefinition Width="2*" MinWidth="350"/>
+                        <ColumnDefinition Width="3*" MinWidth="400"/>
                     </Grid.ColumnDefinitions>
                     
                     <!-- Widok stolików -->
                     <Border Grid.Column="0" Style="{StaticResource CardStyle}" Margin="5">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel>
                             <TextBlock Text="Stoliki" Style="{StaticResource HeaderStyle}"/>
                             
@@ -225,10 +226,12 @@
                                 </WrapPanel>
                             </StackPanel>
                         </StackPanel>
+                        </ScrollViewer>
                     </Border>
                     
                     <!-- Panel zamówienia -->
                     <Border Grid.Column="1" Style="{StaticResource CardStyle}" Margin="5">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto"/>
@@ -414,16 +417,18 @@
                                 <!-- Ten przycisk został przeniesiony wyżej -->
                             </StackPanel>
                         </Grid>
+                        </ScrollViewer>
                     </Border>
                 </Grid>
             </TabItem>
             
             <!-- Tab: Kuchnia i Kelner -->
             <TabItem Header="Kuchnia i Kelner">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                 <Grid Margin="10">
                     <Grid.RowDefinitions>
-                        <RowDefinition Height="*"/>
-                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
                     
                     <!-- Sekcja Kuchni -->
@@ -614,18 +619,21 @@
                         </StackPanel>
                     </Border>
                 </Grid>
+                </ScrollViewer>
             </TabItem>
             
             <!-- Tab: Statystyki -->
             <TabItem Header="Statystyki">
+                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                 <Grid Margin="10">
                     <Grid.ColumnDefinitions>
-                        <ColumnDefinition Width="2*"/>
-                        <ColumnDefinition Width="1*"/>
+                        <ColumnDefinition Width="2*" MinWidth="500"/>
+                        <ColumnDefinition Width="1*" MinWidth="300"/>
                     </Grid.ColumnDefinitions>
                     
                     <!-- LEWA STRONA: Symulacja -->
-                    <StackPanel Grid.Column="0" Margin="0,0,10,0">
+                    <ScrollViewer Grid.Column="0" VerticalScrollBarVisibility="Auto" Margin="0,0,10,0">
+                    <StackPanel>
                         
                         
 
@@ -781,9 +789,11 @@
                             </StackPanel>
                         </Border>
                     </StackPanel>
+                    </ScrollViewer>
                     
                     <!-- PRAWA STRONA: Statystyki -->
-                    <StackPanel Grid.Column="1">
+                    <ScrollViewer Grid.Column="1" VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
                         
                         <!-- Przychód -->
                         <Border Style="{StaticResource CardStyle}" Margin="0,0,0,10">
@@ -867,7 +877,9 @@
                         </Border>
                         
                     </StackPanel>
+                    </ScrollViewer>
                 </Grid>
+                </ScrollViewer>
             </TabItem>
         </TabControl>
         
