@@ -445,7 +445,6 @@
                                 <!-- Kolejka zamówień -->
                                 <StackPanel Grid.Column="0" Margin="0,0,10,0">
                                     <TextBlock Text="Kolejka zamówień" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,5"/>
-                                    <TextBlock x:Name="QueueCountText" Foreground="Gray" FontSize="11" Margin="0,0,0,5"/>
                                     
                                     <ListBox x:Name="KitchenQueueListBox" Height="180"
                                              Style="{StaticResource ModernListBox}"
@@ -476,7 +475,6 @@
                                 <!-- W przygotowaniu -->
                                 <StackPanel Grid.Column="1" Margin="10,0,0,0">
                                     <TextBlock Text="W przygotowaniu" FontWeight="SemiBold" FontSize="14" Margin="0,0,0,5"/>
-                                    <TextBlock x:Name="PreparingCountText" Foreground="Gray" FontSize="11" Margin="0,0,0,5"/>
                                     
                                     <ListBox x:Name="PreparingListBox" Height="180"
                                              Style="{StaticResource ModernListBox}"

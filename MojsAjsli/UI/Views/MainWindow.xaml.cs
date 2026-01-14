@@ -159,8 +159,6 @@ public partial class MainWindow : Window
     private void UpdateKitchenStatusUI()
     {
         _viewModel.KitchenVM.UpdateStatus();
-        QueueCountText.Text = _viewModel.KitchenVM.QueueCount;
-        PreparingCountText.Text = _viewModel.KitchenVM.PreparingCount;
         // Usunięte odwołania do elementów ze Statystyk
     }
 
