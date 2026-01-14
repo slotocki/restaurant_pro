@@ -1,9 +1,6 @@
 ﻿namespace MojsAjsli.Patterns.Strategy;
 
-/// <summary>
-/// Interfejs strategii płatności zgodny z zasadą ISP (Interface Segregation Principle).
-/// Każda metoda płatności implementuje ten interfejs.
-/// </summary>
+//strategy
 public interface IPaymentStrategy
 {
     string Name { get; }
@@ -21,10 +18,7 @@ public enum PaymentMethodType
     BankTransfer
 }
 
-/// <summary>
-/// Bazowa klasa abstrakcyjna dla strategii płatności.
-/// Zgodna z DRY - wspólna logika generowania ID transakcji.
-/// </summary>
+
 public abstract class PaymentStrategyBase : IPaymentStrategy
 {
     protected string TransactionId = "";
@@ -42,9 +36,7 @@ public abstract class PaymentStrategyBase : IPaymentStrategy
     public string GetTransactionId() => TransactionId;
 }
 
-/// <summary>
-/// Strategia płatności gotówką.
-/// </summary>
+
 public class CashPaymentStrategy : PaymentStrategyBase
 {
     public override string Name => "Gotówka";
@@ -58,9 +50,7 @@ public class CashPaymentStrategy : PaymentStrategyBase
     }
 }
 
-/// <summary>
-/// Strategia płatności kartą.
-/// </summary>
+
 public class CardPaymentStrategy : PaymentStrategyBase
 {
     public override string Name => "Karta";

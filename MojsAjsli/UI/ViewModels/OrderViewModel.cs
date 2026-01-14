@@ -111,8 +111,8 @@ public class OrderViewModel : BaseViewModel
     public ICommand AddToOrderCommand { get; }
     public ICommand RemoveFromOrderCommand { get; }
     public ICommand SubmitOrderCommand { get; }
-    public ICommand UndoCommand { get; }
-    public ICommand RedoCommand { get; }
+    public RelayCommand UndoCommand { get; }
+    public RelayCommand RedoCommand { get; }
 
     public event Action? OnOrderSubmitted;
 
@@ -249,6 +249,8 @@ public class OrderViewModel : BaseViewModel
 
             CanUndo = _waiterService.CanUndo(_currentOrder);
             CanRedo = _waiterService.CanRedo(_currentOrder);
+            UndoCommand.RaiseCanExecuteChanged();
+            RedoCommand.RaiseCanExecuteChanged();
         }
         else
         {
@@ -257,6 +259,8 @@ public class OrderViewModel : BaseViewModel
             FinalPriceText = "";
             CanUndo = false;
             CanRedo = false;
+            UndoCommand.RaiseCanExecuteChanged();
+            RedoCommand.RaiseCanExecuteChanged();
         }
     }
 }

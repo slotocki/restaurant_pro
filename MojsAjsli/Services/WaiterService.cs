@@ -50,13 +50,13 @@ public class WaiterService : IColleague
     public void AddItemToOrder(Order order, IDish dish)
     {
         order.AddItem(dish);
-        _orderHistory.SaveState(order); // Zapisz stan PO dodaniu
+        _orderHistory.SaveState(order); //  stan PO dodaniu
     }
 
     public void RemoveItemFromOrder(Order order, IDish dish)
     {
         order.RemoveItem(dish);
-        _orderHistory.SaveState(order); // Zapisz stan PO usunięciu
+        _orderHistory.SaveState(order); //  stan PO usunięciu
     }
 
     public void UndoLastAction(Order order)

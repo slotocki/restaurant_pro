@@ -152,8 +152,7 @@ public partial class MainWindow : Window
         TotalPriceText.Text = _viewModel.OrderVM.TotalPrice;
         DiscountText.Text = _viewModel.OrderVM.DiscountText;
         FinalPriceText.Text = _viewModel.OrderVM.FinalPriceText;
-        UndoButton.IsEnabled = _viewModel.OrderVM.CanUndo;
-        RedoButton.IsEnabled = _viewModel.OrderVM.CanRedo;
+        // IsEnabled dla UndoButton i RedoButton jest zarządzane przez binding w XAML
     }
 
     private void UpdateKitchenStatusUI()
